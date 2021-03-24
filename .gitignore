@@ -13,4 +13,4 @@ Thumbs.db
 *.doc
 *.docx
 
-./raw/
+*/raw/
