@@ -1,0 +1,16 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+Thumbs.db
+
+# Presentations
+*.ppt
+*.pptx
+
+# MS Word
+*.doc
+*.docx
+
+./raw/
