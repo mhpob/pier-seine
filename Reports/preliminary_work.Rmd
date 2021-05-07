@@ -1,0 +1,526 @@
+---
+title: "Preliminary pier seine work"
+author: "Mike O'Brien"
+date: "26 March, 2021"
+output:
+  html_document:
+    toc: yes
+    toc_depth: '4'
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE,
+  dev = "png", dpi = 144
+)
+```
+
+## Start up
+
+### Load packages
+
+```{r echo = TRUE}
+library(ggplot2); library(mgcv); library(gratia); library(data.table)
+```
+
+### Load length data
+
+```{r echo = TRUE}
+lengths <- fread('data/derived/lengths.csv')
+lengths[, yr_fac := as.factor(year)]
+lengths[, record_num := as.factor(record_num)]
+
+head(lengths)
+```
+
+## Summary of length data
+
+These are the different species available (note that there are a few typos that I haven't addressed at this time):
+
+```{r}
+unique(lengths$scientific)
+```
+
+We can also look at this visually. Note that there are plenty of misspellings that I'll sort through later, but the main takeaway is that these species are the top-10 most-consistently sampled:
+
+1.  Atlantic silverside, *Menidia menidia*
+
+2.  Atlantic needlefish, *Strongylura marina*
+
+3.  blue crab, *Callinectes sapidus*
+
+4.  spot, *Leiostomus xanthurus*
+
+5.  inland silverside, *Menidia beryllina*
+
+6.  striped bass, *Morone saxatilis*
+
+7.  bluefish, *Pomatomaus saltatrix*
+
+8.  bay anchovy, *Anchoa mitchilli*
+
+9.  menhaden, *Brevoortia tyrannus*
+
+10. gizzard shad
+
+11. white perch, *Morone americana*
+
+    -   (going to 11 because we love white perch)
+
+```{r}
+l_summary <- lengths[, .N, by = c('scientific', 'wk', 'year')]
+setorder(l_summary, year, wk)
+
+plot_order <- l_summary[, .(incidence = sum(.N)), by = 'scientific']
+setorder(plot_order, incidence)
+
+l_summary[, scientific := factor(scientific, order = T,
+                                    levels = plot_order$scientific)]
+
+ggplot(data = l_summary) +
+  geom_raster(aes(y = scientific, x = interaction(wk, year))) +
+  labs(x = 'Time, increasing ->', y = NULL) +
+  theme(axis.text.x = element_blank())
+```
+
+## Dirty models
+
+For the first crack, I'm going to use a location, scale, and shape GAMM. This just means that I'm **not** going to assume that the standard deviation is constant at all points, but a function of some other terms. Since the fish are growing and other cohorts are recruiting throughout the summer, I'm going to first say that the variance in length is a smoothed function of week. Length itself will be a function of week, temperature, salinity, and a random intercept of year.
+
+$length = \beta_0 + f(week) + f(temperature) + f(salinity) + \beta_{year}$
+
+$length_{sd} = \beta_{sd} + f(week)$
+
+**All of this is just a first guess, and is totally up for adjustment!!**
+
+### Atlantic silverside
+
+```{r echo = TRUE}
+atl <- lengths[grepl(' men', scientific)]
+
+atl_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cr') +
+                      s(temp, bs = 'cr')+
+                      s(sal, bs = 'cr') +
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cr')),
+               family = 'gaulss',
+               data = atl,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(atl_mod)
+```
+
+This model doesn't do a very good job for Atlantic silversides, as it only explains 15% of the deviance. It seems that the model is okay, validity-wise, but there is one wonky point that I'll have to deal with at a later time.
+
+```{r}
+appraise(atl_mod)
+```
+
+Below are the partial effects. Note that "s.1(wk)" is the partial effect of week on the standard deviation. This is centered and on the log-link scale, so you need to add the intercept (2.86) and take the exponent of those values to get the actual standard deviation (i.e., SD ranges 6.42 to 47.40 rather than -1 to 1). The other smooths are centered and on the response scale, so adding the intercept (82.68) will get you the predicted length.
+
+```{r}
+draw(atl_mod)
+```
+
+#### Growth rate
+
+Now for something really neat: the *derivative* of the partial effect of week represents the **growth rate** in millimeters per week (change in length over change in time)!!
+
+```{r}
+atl_der <- derivatives(atl_mod,
+                       term = 's(wk)')
+
+draw(atl_der, ncol = 1)
+```
+
+What I think may be happening here is this: rapid decreases in the derivative of length represent batches of YOY silverside recruiting into the gear; we get repeated influxes of smaller fish, making the "growth rate" of the sampled population become negative. As these fish grow, the "growth rate" becomes less and less negative until the next batch of recruits come in. I may be interpreting this wrong, but the swings from positive to negative in the plot above might represent batch spawning -- would it make sense that these pulses occur in 2-5 week intervals?
+
+
+### Atlantic needlefish
+```{r echo = TRUE}
+ndl <- lengths[grepl('strong', scientific)]
+
+ndl_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, bs = 'cs')+
+                      s(sal, bs = 'cs') +
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = ndl,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(ndl_mod)
+```
+
+Wow -- well this one fit a lot better (90% deviance explained). Salinity has been penalized out of the model, so I'm going to refit the model without it.
+
+```{r echo = TRUE}
+ndl_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs')+
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = ndl,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(ndl_mod)
+```
+
+
+The model diagnostics look pretty good (except for one pesky value -- I need to see if this is the same as the one from the Atl. silverside model).
+
+```{r}
+appraise(ndl_mod)
+```
+
+And the partial effects:
+```{r}
+draw(ndl_mod)
+```
+#### Growth rate
+
+Needlefish seem to be growing pretty quickly here, on the order of >10 mm/wk. This growth rate is depressed between week 30 and 35 -- I wonder if this is a mixture of cohorts or some other effect (too hot?).
+
+```{r}
+ndl_der <- derivatives(ndl_mod,
+                       term = 's(wk)')
+
+draw(ndl_der, ncol = 1)
+```
+
+### Blue crab
+```{r echo = TRUE}
+crb <- lengths[grepl('cal', scientific)]
+
+crb_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = crb,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(crb_mod)
+```
+Salinity looks to have been penalized out of the model again, so refitting without it:
+
+```{r echo = TRUE}
+crb_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = crb,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(crb_mod)
+```
+
+These model diagnostics aren't great and suggest that I need to use a different error family. I'll do that later, but for now I'll just plot ahead.
+
+```{r}
+appraise(crb_mod)
+```
+
+```{r}
+draw(crb_mod)
+```
+
+Hmm. Looks like baby crabs start coming in around week 35, and that this doesn't affect the variance too much. I imagine that if we move forward with blue crab, a much simpler model would suffice.
+
+#### Growth rate
+
+Crabby growth rate seems to be ~5 mm/wk until YOY recruit in around week 35.
+
+```{r}
+draw(derivatives(crb_mod, 's(wk)'))
+```
+
+### Spot
+
+```{r echo = TRUE}
+spt <- lengths[grepl('xan', scientific)]
+
+spt_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = spt,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(spt_mod)
+```
+
+Model diagnostics aren't perfect, but good for now.
+```{r}
+appraise(spt_mod)
+```
+
+```{r}
+draw(spt_mod)
+```
+
+#### Growth rate
+
+Starting to see a pattern here: growth rate is most consistent in weeks 30-35. Perhaps this isn't depression of the rate, but the actual growth rate.
+
+```{r}
+draw(derivatives(spt_mod, 's(wk)'))
+```
+
+### Inland silverside
+```{r echo = TRUE}
+inl <- lengths[grepl('beryl', scientific)]
+
+inl_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = inl,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(inl_mod)
+```
+
+```{r}
+appraise(inl_mod)
+```
+
+```{r}
+draw(inl_mod)
+```
+
+
+
+#### Growth rate
+```{r}
+draw(derivatives(inl_mod, 's(wk)'))
+```
+
+
+### Striped bass
+```{r echo = TRUE}
+sb <- lengths[grepl('morone sax', scientific)]
+
+sb_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = sb,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(sb_mod)
+```
+
+```{r}
+appraise(sb_mod)
+```
+
+```{r}
+draw(sb_mod)
+```
+
+
+
+#### Growth rate
+```{r}
+draw(derivatives(sb_mod, 's(wk)'))
+```
+
+
+
+### Bluefish
+```{r echo = TRUE}
+bfish <- lengths[grepl('salt', scientific)]
+
+bfish_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = bfish,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(bfish_mod)
+```
+
+```{r}
+appraise(bfish_mod)
+```
+
+```{r}
+draw(bfish_mod)
+```
+
+
+
+#### Growth rate
+```{r}
+draw(derivatives(bfish_mod, 's(wk)'))
+```
+
+
+### Bay anchovy
+```{r echo = TRUE}
+banch <- lengths[grepl('mitch', scientific)]
+
+banch_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = banch,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(banch_mod)
+```
+
+```{r}
+appraise(banch_mod)
+```
+
+```{r}
+draw(banch_mod)
+```
+
+
+
+#### Growth rate
+```{r}
+draw(derivatives(banch_mod, 's(wk)'))
+```
+
+
+
+
+### Menhaden
+```{r echo = TRUE}
+menh <- lengths[grepl('brev', scientific)]
+
+menh_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = menh,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(menh_mod)
+```
+
+```{r}
+appraise(menh_mod)
+```
+
+```{r}
+draw(menh_mod)
+```
+
+
+
+#### Growth rate
+```{r}
+draw(derivatives(menh_mod, 's(wk)'))
+```
+
+
+
+### Gizzard shad
+```{r echo = TRUE}
+gizz <- lengths[grepl('cepe', scientific)]
+
+gizz_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = gizz,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(gizz_mod)
+```
+
+```{r}
+appraise(gizz_mod)
+```
+
+```{r}
+draw(gizz_mod)
+```
+
+
+
+#### Growth rate
+```{r}
+draw(derivatives(gizz_mod, 's(wk)'))
+```
+
+
+### White perch
+```{r echo = TRUE}
+wp <- lengths[grepl('morone.amer', scientific)]
+
+wp_mod <- gam(list(length ~
+                      s(wk, k = 15, bs = 'cs') +
+                      s(temp, k = 15, bs = 'cs') +
+                      s(sal, k = 15, bs = 'cs') + 
+                      s(yr_fac, bs = 're'),
+                    ~ s(wk, k = 15, bs = 'cs')),
+               family = 'gaulss',
+               data = wp,
+               method = 'REML',
+               control = gam.control(nthreads = 16))
+
+summary(wp_mod)
+```
+
+```{r}
+appraise(wp_mod)
+```
+
+```{r}
+draw(wp_mod)
+```
+
+
+
+#### Growth rate
+```{r}
+draw(derivatives(wp_mod, 's(wk)'))
+```
