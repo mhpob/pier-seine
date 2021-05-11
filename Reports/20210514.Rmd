@@ -3,12 +3,12 @@ title: ""
 author: "Mike O'Brien"
 date: '2021-05-14'
 output:
-  html_document
+  pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  echo = TRUE, warning = FALSE, message = FALSE,
+  echo = TRUE, warning = FALSE, message = FALSE, error = TRUE,
   dev = "png", dpi = 144
 )
 ```
@@ -38,33 +38,77 @@ ggplot(data = l_summary) +
   theme(axis.text.x = element_blank())
 ```
 
+### Focusing on the most-frequent 10
+
+```{r}
+ggplot(data = l_summary[scientific %in% tail(plot_order, 10)$scientific,]) +
+  geom_raster(aes(y = scientific, x = interaction(wk, year))) +
+  labs(x = 'Time, increasing ->', y = NULL) +
+  theme(axis.text.x = element_blank())
+```
 
 
-```{r asis = TRUE}
+
+```{r results = 'asis', echo=FALSE}
+spp_sub <- tail(plot_order, 10)$scientific
+spp_sub <- spp_sub[10:1]
+
+for(i in spp_sub){
+  temp <- lengths[scientific == i][order(wk)]
+  
+  
+  cat("\n") 
+  cat("##", i, "\n") # Create new sections with the names.
+  cat('### Raw length frequency\n')
+  
+  nrecords <- temp[, .N, by = 'wk'][order(wk)]
+  times <- NULL
+  
+  for(j in 1:nrow(nrecords)){
+    if(nrecords[j]$N == 1){
+      times <- c(times, nrecords[j]$wk)
+    }else{
+      times <- c(times, rep(nrecords[j]$wk, 2 ^ 8))
+    }
+  }
+  
+  print(
+    
+    ggplot() +
+      geom_point(data = temp, aes(x = wk, y = length)) +
+      geom_density(data = temp, aes(x = after_stat(scaled) * 0.9, y = length, group = wk),
+                   n = 2 ^ 8,
+                   position = position_nudge(x = times),
+                   trim = T, adjust = 1.5)
+
+    
+  )
+  
+  cat("\n")
+  cat("### Quantile regression\n")
+  
+  temp[, yr_fac := as.factor(year)]
+  
+  qr <- mqgam(list(length ~ s(wk, k = 20) + s(yr_fac, bs = 're'),
+                   ~s(wk, k = 20)),
+              data = temp,
+              qu = seq(0.1, 0.9, 0.1))
+  
+  qr_vis <- getViz(qr)
+  
+  plot(qr_vis)
+  
+  
+  time_seq <- seq(min(temp$wk), max(temp$wk), length.out = 100)
+  preds <- sapply(qr_vis, predict,
+                  newdata = data.frame(wk = time_seq, yr_fac = '2019'),
+                  exclude = 's(yr_fac)')
+  plot(length ~ wk, data = temp)
+  for(ii in 1:9) lines(time_seq, preds[ , ii], col = 2) 
+}
+
 
 ```
 
 
 
-atl <- lengths[grepl(' men', scientific) & length < 250]
-atl[, yr_fac := as.factor(year)]
-
-qr <- mqgam(list(length ~ s(wk, k = 20) + s(yr_fac, bs = 're'),
-                 ~s(wk, k = 20)),
-            data = atl,
-            qu = seq(0.1, 0.9, 0.1))
-
-qr_vis <- getViz(qr)
-
-
-xseq <- with(atl, seq(min(wk), max(wk), length.out = 100))
- preds <- sapply(kk, predict, newdata = data.frame(wk = xseq, yr_fac = '2019'), exclude = 's(yr_fac)')
- plot(length ~ wk, data = atl)
- for(ii in 1:9) lines(xseq, preds[ , ii], col = 2) 
-
- library(ggplot2)
-ggplot() +
-  geom_point(data = atl, aes(x = wk, y = length)) +
-  geom_density(data = atl, aes(x = after_stat(scaled) * 0.9, y = length, group = wk),
-               position = position_nudge(x = rep(seq(min(atl$wk), max(atl$wk)), each = 512)),
-               trim = T, adjust = 1.5)
