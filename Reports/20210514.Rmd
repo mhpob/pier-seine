@@ -1,0 +1,70 @@
+---
+title: ""
+author: "Mike O'Brien"
+date: '2021-05-14'
+output:
+  html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE,
+  dev = "png", dpi = 144
+)
+```
+
+## Load packages and data
+```{r}
+library(data.table); library(qgam); library(mgcViz); library(ggplot2)
+
+lengths <- fread('data/derived/lengths (qaqc).csv')
+```
+
+## Update to the observation raster:
+
+```{r}
+l_summary <- lengths[, .N, by = c('scientific', 'wk', 'year')]
+setorder(l_summary, year, wk)
+
+plot_order <- l_summary[, .(incidence = sum(.N)), by = 'scientific']
+setorder(plot_order, incidence)
+
+l_summary[, scientific := factor(scientific, order = T,
+                                    levels = plot_order$scientific)]
+
+ggplot(data = l_summary) +
+  geom_raster(aes(y = scientific, x = interaction(wk, year))) +
+  labs(x = 'Time, increasing ->', y = NULL) +
+  theme(axis.text.x = element_blank())
+```
+
+
+
+```{r asis = TRUE}
+
+```
+
+
+
+atl <- lengths[grepl(' men', scientific) & length < 250]
+atl[, yr_fac := as.factor(year)]
+
+qr <- mqgam(list(length ~ s(wk, k = 20) + s(yr_fac, bs = 're'),
+                 ~s(wk, k = 20)),
+            data = atl,
+            qu = seq(0.1, 0.9, 0.1))
+
+qr_vis <- getViz(qr)
+
+
+xseq <- with(atl, seq(min(wk), max(wk), length.out = 100))
+ preds <- sapply(kk, predict, newdata = data.frame(wk = xseq, yr_fac = '2019'), exclude = 's(yr_fac)')
+ plot(length ~ wk, data = atl)
+ for(ii in 1:9) lines(xseq, preds[ , ii], col = 2) 
+
+ library(ggplot2)
+ggplot() +
+  geom_point(data = atl, aes(x = wk, y = length)) +
+  geom_density(data = atl, aes(x = after_stat(scaled) * 0.9, y = length, group = wk),
+               position = position_nudge(x = rep(seq(min(atl$wk), max(atl$wk)), each = 512)),
+               trim = T, adjust = 1.5)
