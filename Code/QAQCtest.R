@@ -97,7 +97,7 @@ m1 <- lm(a.ss$wk ~ a.ss$length)
 IQR(a.ss$length)
   
 ##Atlantic needlefish
-need <- lengths[grepl('strongylura', scientific)]
+need <- lengths[grepl('Strongylura', scientific)]
 
 p3 <- ggplot(data = need) + 
   geom_histogram(aes(x = length))
@@ -211,7 +211,7 @@ ggplotly(p16)
 
 ##menhaden##
 
-men <- lengths[grepl('brevoortia tyrannus', scientific)]
+men <- lengths[grepl('Brevoortia tyrannus', scientific)]
 
 p17 <- ggplot(data = men) + 
   geom_histogram(aes(x = length))
@@ -226,7 +226,7 @@ ggplotly(p18)
 
 ##gizzard shad##
 
-shad <- lengths[grepl('dorosoma cepedianum', scientific)]
+shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
 
 p19 <- ggplot(data = shad) + 
   geom_histogram(aes(x = length))
@@ -241,7 +241,7 @@ ggplotly(p20)
 
 ##white perch##
 
-perch <- lengths[grepl('morone americana', scientific)]
+perch <- lengths[grepl('Morone americana', scientific)]
 
 p21 <- ggplot(data = men) + 
   geom_histogram(aes(x = length))
