@@ -1,0 +1,392 @@
+---
+title: "Qality Control Seine Data"
+author: "Ben Frey"
+date: "5/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
+lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths.csv')
+lengths[, yr_fac := as.factor(year)]
+lengths[, record_num := as.factor(record_num)]
+lengths[, wk := week(date)]
+
+gg_qq <- function(x, distribution = "norm", ..., line.estimate = NULL, conf = 0.95,
+                    labels = names(x)){
+    q.function <- eval(parse(text = paste0("q", distribution)))
+    d.function <- eval(parse(text = paste0("d", distribution)))
+    x <- na.omit(x)
+    ord <- order(x)
+    n <- length(x)
+    P <- ppoints(length(x))
+    df <- data.frame(ord.x = x[ord], z = q.function(P, ...))
+    
+    if(is.null(line.estimate)){
+      Q.x <- quantile(df$ord.x, c(0.25, 0.75))
+      Q.z <- q.function(c(0.25, 0.75), ...)
+      b <- diff(Q.x)/diff(Q.z)
+      coef <- c(Q.x[1] - b * Q.z[1], b)
+    } else {
+      coef <- coef(line.estimate(ord.x ~ z))
+    }
+    
+    zz <- qnorm(1 - (1 - conf)/2)
+    SE <- (coef[2]/d.function(df$z)) * sqrt(P * (1 - P)/n)
+    fit.value <- coef[1] + coef[2] * df$z
+    df$upper <- fit.value + zz * SE
+    df$lower <- fit.value - zz * SE
+    
+    if(!is.null(labels)){ 
+      df$label <- ifelse(df$ord.x > df$upper | df$ord.x < df$lower, labels[ord],"")
+    }
+    
+    p <- ggplot(df, aes(x=z, y=ord.x)) +
+      geom_point() + 
+      geom_abline(intercept = coef[1], slope = coef[2]) +
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) 
+    if(!is.null(labels)) p <- p + geom_text( aes(label = label))
+    print(p)
+    coef
+}
+
+outlierReplace = function(dataframe, cols, rows, newValue = NA) {
+  if (any(rows)) {
+    set(dataframe, rows, cols, newValue)
+  }
+}
+```
+
+## QA/QC species names
+
+
+Original List of Species Names
+```{r, echo=FALSE}
+unique(lengths$scientific)
+
+  # correction
+
+lengths$scientific <- gsub('Menidia mendia', 'Menidia menidia', lengths$scientific)
+lengths$scientific <- gsub('Menidia menida', 'Menidia menidia', lengths$scientific)
+lengths$scientific <- gsub('Brevoortia tyrannus_2', 'Brevoortia tyrannus', lengths$scientific)
+lengths$scientific <- gsub('Dorosoma petense', 'Dorosoma petenense', lengths$scientific)
+lengths$scientific <- gsub('Membras beryllilna', 'Menidia beryllina', lengths$scientific)
+lengths$scientific <- gsub('Stronglyura marina', 'Strongylura marina', lengths$scientific)
+lengths$scientific <- gsub('Strongyluta marina', 'Strongylura marina', lengths$scientific)
+lengths$scientific <- gsub('Fundulus heterclitus', 'Fundulus heteroclitus', lengths$scientific)
+lengths$scientific <- gsub('HypsoblenniusÂ hentzÂ ', 'Hypsoblennius hentz', lengths$scientific)
+lengths$scientific <- gsub('Pogonias chromis', 'Pogonias cromis', lengths$scientific)
+lengths$scientific <- gsub('Striped bass', 'Morone saxatilis', lengths$scientific)
+lengths$scientific <- gsub('Sygnathus fuscus', 'Syngnathus fuscus', lengths$scientific)
+
+
+```
+Finding and fixing any misspelled or mislabeled species names
+```{r echo=FALSE}
+unique(lengths$scientific)
+```
+
+## QA/QC lengths
+### Atlantic Silversides
+
+```{r ASS, echo=FALSE, message=FALSE, warning=FALSE}
+a.ss <- lengths[grepl('Menidia menidia', scientific)]
+
+p1 <- ggplot(data = a.ss) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p1)
+
+p2 <- ggplot(data = a.ss) + 
+  geom_point(aes(x = length, y = 1, color = record_num), showlegend=F)
+
+ggplotly(p2)
+ 
+b1 <- ggplot(data = a.ss, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b1)
+
+gg_qq(a.ss$length)
+
+```
+
+Background suggests Atlantic silversides are "No bigger than max lengths of 180mm" with YOY max length around 80mm. . Outliers Removed > 180.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+outlierReplace(a.ss, "length", which(a.ss$length > 180), NA)  
+ggplotly(p1)
+ggplotly(p2)
+ggplotly(b1)
+gg_qq(a.ss$length)
+```
+### Atlantic needlefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+need <- lengths[grepl('Strongylura', scientific)]
+
+p3 <- ggplot(data = need) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p3)
+
+p4 <- ggplot(data = need) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p4)
+
+b2 <- ggplot(data = need, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b2)
+
+
+gg_qq(need$length)
+
+```
+Recorded Max length Needlefish : 1110 mm TL 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+```
+### Blue crab
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+crab <- lengths[grepl('sapidus', scientific)]
+
+p5 <- ggplot(data = crab) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p5)
+
+p6 <- ggplot(data = crab) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p6)
+
+b3 <- ggplot(data = crab, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b3)
+
+gg_qq(crab$length)
+```
+No joy with Blue Crab in Textbooks. Length at maturity is 128 mm.  Max Length 227 in sealifebase.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+```
+
+### Spot
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+spot <- lengths[grepl('xanthurus', scientific)]
+
+p7 <- ggplot(data = spot) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p7)
+
+p8 <- ggplot(data = spot) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p8)
+
+b4 <- ggplot(data = spot, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b4)  
+
+gg_qq(spot$length)
+```
+Background suggests spot are "No bigger than max lengths of 360 mm" with YOY max length around 170 - 210 mm. Outliers Removed > 360.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+outlierReplace(spot, "length", which(spot$length > 360), NA)  
+ggplotly(p7)
+ggplotly(p8)
+ggplotly(b4)
+gg_qq(spot$length)
+```
+
+### Inland silverside
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+inland <- lengths[grepl('beryllina', scientific)]
+
+p9 <- ggplot(data = inland) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p9)
+
+p10 <- ggplot(data = inland) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p10)
+
+b5 <- ggplot(data = inland, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b5)
+
+gg_qq(inland$length)
+```
+Background suggests inland silversides are "No bigger than max lengths of 150 mm" with YOY max length around 33 mm. Outliers Removed >150.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+outlierReplace(inland, "length", which(inland$length > 150), NA)  
+ggplotly(p9)
+ggplotly(p10)
+ggplotly(b5)
+gg_qq(inland$length)
+```
+
+### Striped bass
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+bass <- lengths[grepl('saxatilis', scientific)]
+
+p11 <- ggplot(data = bass) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p11)
+
+p12 <- ggplot(data = bass) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p12)
+
+b6 <- ggplot(data = bass, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b6)
+
+gg_qq(bass$length)
+```
+Background suggests striped bass are "No bigger than max lengths of 2000 mm" with YOY max length around 150-270 mm
+
+### Bluefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+blue <- lengths[grepl('saltatrix', scientific)]
+
+p13 <- ggplot(data = blue) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p13)
+
+p14 <- ggplot(data = blue) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p14)
+   
+b7 <- ggplot(data = blue, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b7)
+
+gg_qq(blue$length)
+```
+Background suggests bluefish are "No bigger than max lengths of 1300 mm" with YOY max length around 300 mm. Outliers Removed > 300 .
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+outlierReplace(blue, "length", which(blue$length > 300), NA)  
+ggplotly(p13)
+ggplotly(p14)
+ggplotly(b7)
+gg_qq(blue$length)
+
+```
+
+### Bay anchovy
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ancho <- lengths[grepl('mitchilli', scientific)]
+
+p15 <- ggplot(data = ancho) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p15)
+
+p16 <- ggplot(data = ancho) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p16)
+
+b8 <- ggplot(data = ancho, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b8)
+
+gg_qq(ancho$length)
+```
+Background suggests bay anchovy are "No bigger than max lengths of 110 mm" . Outliers Removed > 110.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+outlierReplace(ancho, "length", which(ancho$length > 110), NA)  
+ggplotly(p15)
+ggplotly(p16)
+ggplotly(b8)
+gg_qq(ancho$length)
+```
+
+### Menhaden
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+men <- lengths[grepl('Brevoortia tyrannus', scientific)]
+
+p17 <- ggplot(data = men) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p17)
+
+p18 <- ggplot(data = men) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p18)
+b9 <- ggplot(data = men, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b9)
+
+gg_qq(men$length)
+```
+
+Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY max length around 350 mm. 
+
+### Gizzard shad
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
+
+p19 <- ggplot(data = shad) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p19)
+
+p20 <- ggplot(data = shad) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p20)
+
+b10 <- ggplot(data = shad, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b10)
+
+gg_qq(shad$length)
+```
+Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm" 
+
+### White perch
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+perch <- lengths[grepl('Morone americana', scientific)]
+
+p21 <- ggplot(data = perch) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p21)
+
+p22 <- ggplot(data = perch) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p22)
+
+b11 <- ggplot(data = perch, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b11)
+
+gg_qq(perch$length)
+```
+Background suggests white perch are "No bigger than max lengths of 580 mm" with YOY max length around 100-250 mm
