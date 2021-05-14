@@ -19,10 +19,12 @@ lengths$scientific <- gsub('Membras beryllilna', 'Menidia beryllina', lengths$sc
 lengths$scientific <- gsub('Stronglyura marina', 'Strongylura marina', lengths$scientific)
 lengths$scientific <- gsub('Strongyluta marina', 'Strongylura marina', lengths$scientific)
 lengths$scientific <- gsub('Fundulus heterclitus', 'Fundulus heteroclitus', lengths$scientific)
-lengths$scientific <- gsub('HypsoblenniusÂ hentzÂ ', 'Hypsoblennius hentz', lengths$scientific)
+lengths$scientific <- gsub('HypsoblenniusÂ hentzÂ', 'Hypsoblennius hentz', lengths$scientific)
 lengths$scientific <- gsub('Pogonias chromis', 'Pogonias cromis', lengths$scientific)
 lengths$scientific <- gsub('Striped bass', 'Morone saxatilis', lengths$scientific)
 lengths$scientific <- gsub('Sygnathus fuscus', 'Syngnathus fuscus', lengths$scientific)
+lengths$scientific <- gsub('Morone Saxatilis', 'Morone saxatilis', lengths$scientific)
+lengths$scientific <- gsub('Brevoortia Tyrannus', 'Brevoortia tyrannus', lengths$scientific)
 
 unique(lengths$scientific)
 fwrite(lengths, 'data/derived/lengths(QAQC2).csv')
@@ -296,7 +298,7 @@ p18 <- ggplot(data = men) +
   geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
 
 ggplotly(p18)
-men
+
 b9 <- ggplot(data = men, ) +
   geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
 

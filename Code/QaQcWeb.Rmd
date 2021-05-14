@@ -6,6 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+#https://rpubs.com/FlyFrey/769226
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
 lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths.csv')
@@ -81,6 +82,7 @@ lengths$scientific <- gsub('Striped bass', 'Morone saxatilis', lengths$scientifi
 lengths$scientific <- gsub('Sygnathus fuscus', 'Syngnathus fuscus', lengths$scientific)
 
 
+
 ```
 Finding and fixing any misspelled or mislabeled species names
 ```{r echo=FALSE}
@@ -146,9 +148,7 @@ gg_qq(need$length)
 
 ```
 Recorded Max length Needlefish : 1110 mm TL 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
 
-```
 ### Blue crab
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 crab <- lengths[grepl('sapidus', scientific)]
@@ -226,7 +226,7 @@ ggplotly(b5)
 
 gg_qq(inland$length)
 ```
-Background suggests inland silversides are "No bigger than max lengths of 150 mm" with YOY max length around 33 mm. Outliers Removed >150.
+Background suggests inland silversides are "No bigger than max lengths of 150 mm" with YOY max length around 40-60 mm. Outliers Removed >150.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 outlierReplace(inland, "length", which(inland$length > 150), NA)  
