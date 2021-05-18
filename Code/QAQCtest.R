@@ -1,5 +1,5 @@
 library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
-lengths <- fread('data/derived/lengths.csv')
+lengths <- fread('data/derived/lengths2.csv')
 lengths[, yr_fac := as.factor(year)]
 lengths[, record_num := as.factor(record_num)]
 lengths[, wk := week(date)]
@@ -55,9 +55,6 @@ outlierReplace = function(dataframe, cols, rows, newValue = NA) {
     set(dataframe, rows, cols, newValue)
   }
 }
-
-
-
 
 # A.ss Outliers:(Record #, Size)
   #(1721, 703) (1733, 706)

@@ -80,7 +80,8 @@ lengths$scientific <- gsub('HypsoblenniusÂ hentzÂ ', 'Hypsoblennius hentz', le
 lengths$scientific <- gsub('Pogonias chromis', 'Pogonias cromis', lengths$scientific)
 lengths$scientific <- gsub('Striped bass', 'Morone saxatilis', lengths$scientific)
 lengths$scientific <- gsub('Sygnathus fuscus', 'Syngnathus fuscus', lengths$scientific)
-
+lengths$scientific <- gsub('Morone Saxatilis', 'Morone saxatilis', lengths$scientific)
+lengths$scientific <- gsub('Brevoortia Tyrannus', 'Brevoortia tyrannus', lengths$scientific)
 
 
 ```
