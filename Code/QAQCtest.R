@@ -1,8 +1,10 @@
 library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
-lengths <- fread('data/derived/lengths2.csv')
+lengths <- fread('data/derived/lengths.csv')
 lengths[, yr_fac := as.factor(year)]
 lengths[, record_num := as.factor(record_num)]
 lengths[, wk := week(date)]
+vec <- c(1)
+lengths$counts <- vec
 
 head(lengths)
 
@@ -33,6 +35,11 @@ fwrite(lengths, 'data/derived/lengths(QAQC2).csv')
 
 ##Atlantic Silverside
 a.ss <- lengths[grepl('Menidia menidia', scientific)]
+
+h1<-ggplot(data=a.ss, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h1)
 
 p1 <- ggplot(data = a.ss) + 
   geom_histogram(aes(x = length))
@@ -106,10 +113,18 @@ gg_qq(a.ss$length)
 IQR(a.ss$length)
 
 outlierReplace(a.ss, "length", which(a.ss$length > 180), NA)  
-ggplotly(b1)
-  
+ggplotly(h1)
+ggplotly(p1)
+ggplotly(p2)
+ggplotly(b1)  
+gg_qq(a.ss$length)
 ##Atlantic needlefish
 need <- lengths[grepl('Strongylura', scientific)]
+
+h2<-ggplot(data=need, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h2)
 
 p3 <- ggplot(data = need) + 
   geom_histogram(aes(x = length))
@@ -133,6 +148,11 @@ gg_qq(need$length)
 ##Blue Crab
 crab <- lengths[grepl('sapidus', scientific)]
 
+h3<-ggplot(data=crab, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h3)
+
 p5 <- ggplot(data = crab) + 
   geom_histogram(aes(x = length))
 
@@ -151,6 +171,11 @@ ggplotly(b3)
 gg_qq(crab$length)
 #Spot
 spot <- lengths[grepl('xanthurus', scientific)]
+
+h4<-ggplot(data=spot, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h4)
 
 p7 <- ggplot(data = spot) + 
   geom_histogram(aes(x = length))
@@ -172,6 +197,7 @@ gg_qq(spot$length)
 #Outliers:(Record #, Size)
         #(1651, 409) Max 360mm
 outlierReplace(spot, "length", which(spot$length > 360), NA)  
+ggplotly(h4)
 ggplotly(p7)
 ggplotly(p8)
 ggplotly(b4)
@@ -179,6 +205,11 @@ gg_qq(spot$length)
 
 ###inland silverside###
 inland <- lengths[grepl('beryllina', scientific)]
+
+h5<-ggplot(data=inland, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h5)
 
 p9 <- ggplot(data = inland) + 
   geom_histogram(aes(x = length))
@@ -201,6 +232,7 @@ gg_qq(inland$length)
       #(1598, 700) Max 150mm
 
 outlierReplace(inland, "length", which(inland$length > 150), NA)  
+ggplotly(h5)
 ggplotly(p9)
 ggplotly(p10)
 ggplotly(b5)
@@ -209,6 +241,11 @@ gg_qq(inland$length)
 ##striped bass##
 
 bass <- lengths[grepl('saxatilis', scientific)]
+
+h6<-ggplot(data=bass, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h6)
 
 p11 <- ggplot(data = bass) + 
   geom_histogram(aes(x = length))
@@ -231,6 +268,11 @@ gg_qq(bass$length)
 
 blue <- lengths[grepl('saltatrix', scientific)]
 
+h7<-ggplot(data=blue, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h7)
+
 p13 <- ggplot(data = blue) + 
   geom_histogram(aes(x = length))
 
@@ -250,6 +292,7 @@ gg_qq(blue$length)
 #Outliers:(Record #, Size)
     #(1668, 700) Max 1130mm
 outlierReplace(blue, "length", which(blue$length > 1130), NA)  
+ggplotly(h7)
 ggplotly(p13)
 ggplotly(p14)
 ggplotly(b7)
@@ -258,6 +301,11 @@ gg_qq(blue$length)
 ##bay anchovy##
 
 ancho <- lengths[grepl('mitchilli', scientific)]
+
+h8<-ggplot(data=ancho, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h8)
 
 p15 <- ggplot(data = ancho) + 
   geom_histogram(aes(x = length))
@@ -278,6 +326,7 @@ gg_qq(ancho$length)
     #Outliers:(Record #, Size)
       #(3100, 186) Max 110mm
 outlierReplace(ancho, "length", which(ancho$length > 110), NA)  
+ggplotly(h8)
 ggplotly(p15)
 ggplotly(p16)
 ggplotly(b8)
@@ -285,6 +334,11 @@ gg_qq(ancho$length)
 ##menhaden##
 
 men <- lengths[grepl('Brevoortia tyrannus', scientific)]
+
+h9<-ggplot(data=men, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h9)
 
 p17 <- ggplot(data = men) + 
   geom_histogram(aes(x = length))
@@ -308,6 +362,11 @@ gg_qq(men$length)
 
 shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
 
+h10<-ggplot(data=shad, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h10)
+
 p19 <- ggplot(data = shad) + 
   geom_histogram(aes(x = length))
 
@@ -330,6 +389,11 @@ gg_qq(shad$length)
 ##white perch##
 
 perch <- lengths[grepl('Morone americana', scientific)]
+
+h11<-ggplot(data=perch, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h11)
 
 p21 <- ggplot(data = perch) + 
   geom_histogram(aes(x = length))

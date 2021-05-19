@@ -1,0 +1,192 @@
+---
+title: "Seine Data, Length By Week"
+author: "Ben Frey"
+date: "5/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#https://rpubs.com/FlyFrey/qaqclengths
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
+lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
+lengths[, yr_fac := as.factor(year)]
+lengths[, record_num := as.factor(record_num)]
+lengths[, wk := week(date)]
+vec <- c(1)
+lengths$counts <- vec
+
+gg_qq <- function(x, distribution = "norm", ..., line.estimate = NULL, conf = 0.95,
+                    labels = names(x)){
+    q.function <- eval(parse(text = paste0("q", distribution)))
+    d.function <- eval(parse(text = paste0("d", distribution)))
+    x <- na.omit(x)
+    ord <- order(x)
+    n <- length(x)
+    P <- ppoints(length(x))
+    df <- data.frame(ord.x = x[ord], z = q.function(P, ...))
+    
+    if(is.null(line.estimate)){
+      Q.x <- quantile(df$ord.x, c(0.25, 0.75))
+      Q.z <- q.function(c(0.25, 0.75), ...)
+      b <- diff(Q.x)/diff(Q.z)
+      coef <- c(Q.x[1] - b * Q.z[1], b)
+    } else {
+      coef <- coef(line.estimate(ord.x ~ z))
+    }
+    
+    zz <- qnorm(1 - (1 - conf)/2)
+    SE <- (coef[2]/d.function(df$z)) * sqrt(P * (1 - P)/n)
+    fit.value <- coef[1] + coef[2] * df$z
+    df$upper <- fit.value + zz * SE
+    df$lower <- fit.value - zz * SE
+    
+    if(!is.null(labels)){ 
+      df$label <- ifelse(df$ord.x > df$upper | df$ord.x < df$lower, labels[ord],"")
+    }
+    
+    p <- ggplot(df, aes(x=z, y=ord.x)) +
+      geom_point() + 
+      geom_abline(intercept = coef[1], slope = coef[2]) +
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) 
+    if(!is.null(labels)) p <- p + geom_text( aes(label = label))
+    print(p)
+    coef
+}
+
+outlierReplace = function(dataframe, cols, rows, newValue = NA) {
+  if (any(rows)) {
+    set(dataframe, rows, cols, newValue)
+  }
+}
+```
+
+
+## QA/QC lengths
+### Atlantic Silversides
+
+```{r ASS, echo=FALSE, message=FALSE, warning=FALSE}
+a.ss <- lengths[grepl('Menidia menidia', scientific)]
+
+h1<-ggplot(data=a.ss, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h1)
+
+```
+
+Background suggests Atlantic silversides are "No bigger than max lengths of 180mm" with YOY max length around 80mm. . Outliers Removed > 180.
+
+### Atlantic needlefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+need <- lengths[grepl('Strongylura', scientific)]
+
+h2<-ggplot(data=need, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h2)
+
+```
+Recorded Max length Needlefish : 1110 mm TL 
+
+### Blue crab
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+crab <- lengths[grepl('sapidus', scientific)]
+h3<-ggplot(data=crab, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h3)
+```
+No joy with Blue Crab in Textbooks. Length at maturity is 128 mm.  Max Length 227 in sealifebase.
+
+### Spot
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+spot <- lengths[grepl('xanthurus', scientific)]
+
+h4<-ggplot(data=spot, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h4)
+```
+Background suggests spot are "No bigger than max lengths of 360 mm" with YOY max length around 170 - 210 mm. Outliers Removed > 360.
+
+
+### Inland silverside
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+inland <- lengths[grepl('beryllina', scientific)]
+
+h5<-ggplot(data=inland, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h5)
+```
+Background suggests inland silversides are "No bigger than max lengths of 150 mm" with YOY max length around 40-60 mm. Outliers Removed >150.
+
+### Striped bass
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+bass <- lengths[grepl('saxatilis', scientific)]
+
+h6<-ggplot(data=bass, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h6)
+```
+Background suggests striped bass are "No bigger than max lengths of 2000 mm" with YOY max length around 150-270 mm
+
+### Bluefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+blue <- lengths[grepl('saltatrix', scientific)]
+
+h7<-ggplot(data=blue, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h7)
+```
+Background suggests bluefish are "No bigger than max lengths of 1300 mm" with YOY max length around 300 mm. Outliers Removed > 300 .
+
+### Bay anchovy
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ancho <- lengths[grepl('mitchilli', scientific)]
+
+h8<-ggplot(data=ancho, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h8)
+```
+Background suggests bay anchovy are "No bigger than max lengths of 110 mm" . Outliers Removed > 110.
+
+
+
+### Menhaden
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+men <- lengths[grepl('Brevoortia tyrannus', scientific)]
+
+h9<-ggplot(data=men, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h9)
+```
+
+Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY max length around 350 mm. 
+
+### Gizzard shad
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
+
+h10<-ggplot(data=shad, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h10)
+```
+Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm" 
+
+### White perch
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+perch <- lengths[grepl('Morone americana', scientific)]
+
+h11<-ggplot(data=perch, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h11)
+```
+Background suggests white perch are "No bigger than max lengths of 580 mm" with YOY max length around 100-250 mm
