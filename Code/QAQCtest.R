@@ -6,7 +6,6 @@ lengths[, wk := week(date)]
 vec <- c(1)
 lengths$counts <- vec
 
-head(lengths)
 
 #Checking to see for any repeat/Misspelled Names for top 11 fish
 unique(lengths$scientific)
@@ -21,7 +20,7 @@ lengths$scientific <- gsub('Membras beryllilna', 'Menidia beryllina', lengths$sc
 lengths$scientific <- gsub('Stronglyura marina', 'Strongylura marina', lengths$scientific)
 lengths$scientific <- gsub('Strongyluta marina', 'Strongylura marina', lengths$scientific)
 lengths$scientific <- gsub('Fundulus heterclitus', 'Fundulus heteroclitus', lengths$scientific)
-lengths$scientific <- gsub('HypsoblenniusÂ hentzÂ', 'Hypsoblennius hentz', lengths$scientific)
+lengths$scientific <- gsub('HypsoblenniusÂ hentzÂ ', 'Hypsoblennius hentz', lengths$scientific)
 lengths$scientific <- gsub('Pogonias chromis', 'Pogonias cromis', lengths$scientific)
 lengths$scientific <- gsub('Striped bass', 'Morone saxatilis', lengths$scientific)
 lengths$scientific <- gsub('Sygnathus fuscus', 'Syngnathus fuscus', lengths$scientific)
@@ -29,7 +28,7 @@ lengths$scientific <- gsub('Morone Saxatilis', 'Morone saxatilis', lengths$scien
 lengths$scientific <- gsub('Brevoortia Tyrannus', 'Brevoortia tyrannus', lengths$scientific)
 
 unique(lengths$scientific)
-fwrite(lengths, 'data/derived/lengths(QAQC2).csv')
+ fwrite(lengths, 'data/derived/lengths(QAQC2).csv')
 
 #Outlier Discovery Mission
 
@@ -148,7 +147,7 @@ gg_qq(need$length)
 ##Blue Crab
 crab <- lengths[grepl('sapidus', scientific)]
 
-h3<-ggplot(data=crab, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h3<-ggplot(data=crab, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h3)
@@ -268,7 +267,7 @@ gg_qq(bass$length)
 
 blue <- lengths[grepl('saltatrix', scientific)]
 
-h7<-ggplot(data=blue, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h7<-ggplot(data=blue, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h7)
@@ -362,7 +361,7 @@ gg_qq(men$length)
 
 shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
 
-h10<-ggplot(data=shad, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h10<-ggplot(data=shad, aes(x=wk, y=counts,  fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h10)
@@ -390,7 +389,7 @@ gg_qq(shad$length)
 
 perch <- lengths[grepl('Morone americana', scientific)]
 
-h11<-ggplot(data=perch, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h11<-ggplot(data=perch, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h11)
@@ -412,3 +411,10 @@ ggplotly(b11)
 
 gg_qq(perch$length)
 #max 580mm
+
+#HypsoblenniusÂ hentzÂ
+weird <- lengths[grepl('NA', scientific)]
+p23 <- ggplot(data = weird) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p23)

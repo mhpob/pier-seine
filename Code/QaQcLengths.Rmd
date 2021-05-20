@@ -75,7 +75,7 @@ ggplotly(h1)
 
 ```
 
-Background suggests Atlantic silversides are "No bigger than max lengths of 180mm" with YOY max length around 80mm. . Outliers Removed > 180.
+Background suggests Atlantic silversides are "No bigger than max lengths of 180mm" with YOY max length around 80mm. Outliers Removed > 180.
 
 ### Atlantic needlefish
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -87,12 +87,13 @@ h2<-ggplot(data=need, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
 ggplotly(h2)
 
 ```
-Recorded Max length Needlefish : 1110 mm TL 
+Recorded Max length Needlefish : 1110 mm TL with YOY max length around 190-400mm
 
 ### Blue crab
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 crab <- lengths[grepl('sapidus', scientific)]
-h3<-ggplot(data=crab, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+
+h3<-ggplot(data=crab, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h3)
@@ -137,7 +138,7 @@ Background suggests striped bass are "No bigger than max lengths of 2000 mm" wit
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 blue <- lengths[grepl('saltatrix', scientific)]
 
-h7<-ggplot(data=blue, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h7<-ggplot(data=blue, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h7)
@@ -173,7 +174,7 @@ Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
 
-h10<-ggplot(data=shad, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h10<-ggplot(data=shad, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h10)
@@ -184,7 +185,7 @@ Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm"
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 perch <- lengths[grepl('Morone americana', scientific)]
 
-h11<-ggplot(data=perch, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h11<-ggplot(data=perch, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
 ggplotly(h11)
