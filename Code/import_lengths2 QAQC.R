@@ -3,7 +3,7 @@ library(readxl); library(data.table)
 # excel_sheets('p:/obrien/seine/cbl_seine_database.xlsx')
 
 
-## Import length data ----
+## Import length data from QaQcd source ----
 
 lengths <- read_excel('C:/Users/benba/Documents/GitHub/pier-seine/Data/CBL_seine_database_2019_QA_QC.xlsx',
                       sheet = 'Counts_Lengths QA_QC',
