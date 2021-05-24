@@ -1,7 +1,7 @@
 ---
-title: "Seine Data, Length By Week"
+title: "Seine Data, Organized Length By Week"
 author: "Ben Frey"
-date: "5/19/2021"
+date: "5/24/2021"
 output: html_document
 ---
 
@@ -9,10 +9,11 @@ output: html_document
 #https://rpubs.com/FlyFrey/qaqclengths
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
-lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
+lengths <- fread('C:/Users/ben/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
 lengths[, yr_fac := as.factor(year)]
 lengths[, record_num := as.factor(record_num)]
 lengths[, wk := week(date)]
+lengths[, length2 := as.factor(length)]
 vec <- c(1)
 lengths$counts <- vec
 
@@ -68,10 +69,9 @@ outlierReplace = function(dataframe, cols, rows, newValue = NA) {
 ```{r ASS, echo=FALSE, message=FALSE, warning=FALSE}
 a.ss <- lengths[grepl('Menidia menidia', scientific)]
 
-h1<-ggplot(data=a.ss, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h1<-ggplot(data=a.ss, aes(x=wk, y=counts, fill = length, color = length,order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
-
-ggplotly(h1)
+ggplotly(h1,tooltip = "text")
 
 ```
 
@@ -81,10 +81,10 @@ Background suggests Atlantic silversides are "No bigger than max lengths of 180m
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 need <- lengths[grepl('Strongylura', scientific)]
 
-h2<-ggplot(data=need, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h2<-ggplot(data=need, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h2)
+ggplotly(h2,tooltip = "text")
 
 ```
 Recorded Max length Needlefish : 1110 mm TL with YOY max length around 190-400mm
@@ -93,10 +93,10 @@ Recorded Max length Needlefish : 1110 mm TL with YOY max length around 190-400mm
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 crab <- lengths[grepl('sapidus', scientific)]
 
-h3<-ggplot(data=crab, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
+h3<-ggplot(data=crab, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h3)
+ggplotly(h3,tooltip = "text")
 ```
 No joy with Blue Crab in Textbooks. Length at maturity is 128 mm.  Max Length 227 in sealifebase.
 
@@ -104,10 +104,10 @@ No joy with Blue Crab in Textbooks. Length at maturity is 128 mm.  Max Length 22
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 spot <- lengths[grepl('xanthurus', scientific)]
 
-h4<-ggplot(data=spot, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h4<-ggplot(data=spot, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h4)
+ggplotly(h4,tooltip = "text")
 ```
 Background suggests spot are "No bigger than max lengths of 360 mm" with YOY max length around 170 - 210 mm. Outliers Removed > 360.
 
@@ -116,10 +116,10 @@ Background suggests spot are "No bigger than max lengths of 360 mm" with YOY max
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 inland <- lengths[grepl('beryllina', scientific)]
 
-h5<-ggplot(data=inland, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h5<-ggplot(data=inland, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h5)
+ggplotly(h5,tooltip = "text")
 ```
 Background suggests inland silversides are "No bigger than max lengths of 150 mm" with YOY max length around 40-60 mm. Outliers Removed >150.
 
@@ -127,10 +127,10 @@ Background suggests inland silversides are "No bigger than max lengths of 150 mm
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 bass <- lengths[grepl('saxatilis', scientific)]
 
-h6<-ggplot(data=bass, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h6<-ggplot(data=bass, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h6)
+ggplotly(h6,tooltip = "text")
 ```
 Background suggests striped bass are "No bigger than max lengths of 2000 mm" with YOY max length around 150-270 mm
 
@@ -138,10 +138,10 @@ Background suggests striped bass are "No bigger than max lengths of 2000 mm" wit
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 blue <- lengths[grepl('saltatrix', scientific)]
 
-h7<-ggplot(data=blue, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
+h7<-ggplot(data=blue, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h7)
+ggplotly(h7,tooltip = "text")
 ```
 Background suggests bluefish are "No bigger than max lengths of 1300 mm" with YOY max length around 300 mm. Outliers Removed > 300 .
 
@@ -149,10 +149,10 @@ Background suggests bluefish are "No bigger than max lengths of 1300 mm" with YO
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ancho <- lengths[grepl('mitchilli', scientific)]
 
-h8<-ggplot(data=ancho, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h8<-ggplot(data=ancho, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h8)
+ggplotly(h8,tooltip = "text")
 ```
 Background suggests bay anchovy are "No bigger than max lengths of 110 mm" . Outliers Removed > 110.
 
@@ -162,10 +162,10 @@ Background suggests bay anchovy are "No bigger than max lengths of 110 mm" . Out
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 men <- lengths[grepl('Brevoortia tyrannus', scientific)]
 
-h9<-ggplot(data=men, aes(x=wk, y=counts, color = length), show.legend=FALSE) +
+h9<-ggplot(data=men, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h9)
+ggplotly(h9,tooltip = "text")
 ```
 
 Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY max length around 350 mm. 
@@ -174,10 +174,10 @@ Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
 
-h10<-ggplot(data=shad, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
+h10<-ggplot(data=shad, aes(x=wk, y=counts,  fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h10)
+ggplotly(h10,tooltip = "text")
 ```
 Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm" 
 
@@ -185,9 +185,9 @@ Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm"
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 perch <- lengths[grepl('Morone americana', scientific)]
 
-h11<-ggplot(data=perch, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
+h11<-ggplot(data=perch, aes(x=wk, y=counts,  fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
   geom_bar(stat="identity")+ ggtitle("Length by week") 
 
-ggplotly(h11)
+ggplotly(h11,tooltip = "text")
 ```
 Background suggests white perch are "No bigger than max lengths of 580 mm" with YOY max length around 100-250 mm
