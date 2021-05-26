@@ -391,3 +391,25 @@ ggplotly(b11)
 gg_qq(perch$length)
 ```
 Background suggests white perch are "No bigger than max lengths of 580 mm" with YOY max length around 100-250 mm
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+threadfin <- lengths[grepl('Dorosoma petenense', scientific)]
+
+p23 <- ggplot(data = threadfin) + 
+  geom_histogram(aes(x = length))
+
+ggplotly(p23)
+
+p24 <- ggplot(data = threadfin) + 
+  geom_point(aes(x = length, y = 1, color = record_num), show.legend = FALSE)
+
+ggplotly(p24)
+
+b12 <- ggplot(data = threadfin, ) +
+  geom_boxplot(aes(x = "", y = length, ), show.legend=FALSE) + coord_flip()
+
+ggplotly(b12)
+
+gg_qq(threadfin$length)
+```
+

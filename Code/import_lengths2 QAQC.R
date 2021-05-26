@@ -16,10 +16,14 @@ lengths <- melt(lengths,
                 id.vars = c('record_num', 'scientific', 'count'),
                 value.name = 'length')
 lengths <- lengths[!is.na(length)]
-lengths[, ':='(variable = NULL,
+lengths[, ':='(scientific = tolower(scientific),
+               variable = NULL,
                count = NULL)]
 
-lengths[, length := gsub('[A-z]', '', length)]
+## Make everything a number ----
+lengths[, length := gsub('[A-z]|\\*|>', '', length)]
+### There's stil one special case, where length is "1-1.5"
+lengths[length == ' 1-1.5 ', length := 1.5]
 lengths[, length := as.numeric(length)]
 
 
