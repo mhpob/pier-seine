@@ -1,19 +1,21 @@
 ---
-title: "Seine Data, Organized Length By Week"
+title: "Seine Data, YOY Seperation Organized Length By Week"
 author: "Ben Frey"
-date: "5/24/2021"
+date: "5/26/2021"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 #https://rpubs.com/FlyFrey/qaqclengths
 knitr::opts_chunk$set(echo = TRUE)
-library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
-lengths <- fread('C:/Users/ben/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
+library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr);
+library(tibble); library(readr)
+lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
 lengths[, yr_fac := as.factor(year)]
 lengths[, record_num := as.factor(record_num)]
 lengths[, wk := week(date)]
 lengths[, length2 := as.factor(length)]
+
 vec <- c(1)
 lengths$counts <- vec
 
@@ -69,9 +71,24 @@ outlierReplace = function(dataframe, cols, rows, newValue = NA) {
 ```{r ASS, echo=FALSE, message=FALSE, warning=FALSE}
 a.ss <- lengths[grepl('menidia menidia', scientific)]
 
-h1<-ggplot(data=a.ss, aes(x=wk, y=counts, fill = length, color = length,order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+a.ss <- a.ss %>% mutate(YOY =
+                     case_when(length <= 80 ~ "YOY", 
+                               length > 80 ~ "1+")
+)#adding YOY threshold
+
+#h1<-ggplot(data=a.ss, aes(x=wk, y=counts, fill = length, color = length,order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +geom_bar(stat="identity")+ ggtitle("Length by week") #+ facet_grid(YOY ~ .)
+#ggplotly(h1,tooltip = "text")
+
+h1<-ggplot(data=a.ss  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=a.ss  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m1,tooltip = "text")
+
+
 
 ```
 
@@ -81,10 +98,22 @@ Background suggests Atlantic silversides are "No bigger than max lengths of 180m
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 need <- lengths[grepl('strongylura', scientific)]
 
-h2<-ggplot(data=need, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+need <- need %>% mutate(YOY =
+                     case_when(length < 400 ~ "YOY", 
+                               length >= 400 ~ "1+")
+) #adding YOY threshold
+
+h2<-ggplot(data=need  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h2,tooltip = "text")
+
+m2<-ggplot(data=need  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m2,tooltip = "text")
+
+
 
 ```
 Recorded Max length Needlefish : 1110 mm TL with YOY max length around 190-400mm
@@ -93,10 +122,20 @@ Recorded Max length Needlefish : 1110 mm TL with YOY max length around 190-400mm
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 crab <- lengths[grepl('sapidus', scientific)]
 
-h3<-ggplot(data=crab, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+crab <- crab %>% mutate(YOY =
+                     case_when(length <= 128 ~ "YOY", 
+                               length > 128 ~ "1+")
+) #adding YOY threshold
+
+h3<-ggplot(data=crab  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h3,tooltip = "text")
+
+m3<-ggplot(data=crab  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m3,tooltip = "text")
 ```
 No joy with Blue Crab in Textbooks. Length at maturity is 128 mm.  Max Length 227 in sealifebase.
 
@@ -104,10 +143,20 @@ No joy with Blue Crab in Textbooks. Length at maturity is 128 mm.  Max Length 22
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 spot <- lengths[grepl('xanthurus', scientific)]
 
-h4<-ggplot(data=spot, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+spot <- spot %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+h4<-ggplot(data=spot  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h4,tooltip = "text")
+
+m4<-ggplot(data=spot  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m4,tooltip = "text")
 ```
 Background suggests spot are "No bigger than max lengths of 360 mm" with YOY max length around 170 - 210 mm. Outliers Removed > 360.
 
@@ -116,10 +165,21 @@ Background suggests spot are "No bigger than max lengths of 360 mm" with YOY max
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 inland <- lengths[grepl('beryllina', scientific)]
 
-h5<-ggplot(data=inland, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+inland <- inland %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
+
+h5<-ggplot(data=inland  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h5,tooltip = "text")
+
+m5<-ggplot(data=inland  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m5,tooltip = "text")
+
 ```
 Background suggests inland silversides are "No bigger than max lengths of 150 mm" with YOY max length around 40-60 mm. Outliers Removed >150.
 
@@ -127,10 +187,21 @@ Background suggests inland silversides are "No bigger than max lengths of 150 mm
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 bass <- lengths[grepl('saxatilis', scientific)]
 
-h6<-ggplot(data=bass, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+bass <- bass %>% mutate(YOY =
+                     case_when(length < 270 ~ "YOY", 
+                               length >= 270 ~ "1+")
+) #adding YOY threshold
+
+h6<-ggplot(data=bass  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h6,tooltip = "text")
+
+m6<-ggplot(data=bass  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m6,tooltip = "text")
+
 ```
 Background suggests striped bass are "No bigger than max lengths of 2000 mm" with YOY max length around 150-270 mm
 
@@ -138,23 +209,43 @@ Background suggests striped bass are "No bigger than max lengths of 2000 mm" wit
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 blue <- lengths[grepl('saltatrix', scientific)]
 
-h7<-ggplot(data=blue, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+blue <- blue %>% mutate(YOY =
+                     case_when(length < 140 ~ "YOY", 
+                               length >= 140 ~ "1+")
+) #adding YOY threshold
+
+h7<-ggplot(data=blue  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h7,tooltip = "text")
+
+m7<-ggplot(data=blue  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m7,tooltip = "text")
 ```
-Background suggests bluefish are "No bigger than max lengths of 1300 mm" with YOY max length around 300 mm. Outliers Removed > 300 .
+Background suggests bluefish are "No bigger than max lengths of 1300 mm" with YOY max length around 130-140 mm. Outliers Removed > 700 .
 
 ### Bay anchovy
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 ancho <- lengths[grepl('mitchilli', scientific)]
+outlierReplace(ancho, "length", which(ancho$length > 110), NA)  
+ancho <- ancho %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
 
-h8<-ggplot(data=ancho, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+h8<-ggplot(data=ancho  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h8,tooltip = "text")
+
+m8<-ggplot(data=ancho  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m8,tooltip = "text")
 ```
-Background suggests bay anchovy are "No bigger than max lengths of 110 mm" . Outliers Removed > 110.
+Background suggests bay anchovy are "No bigger than max lengths of 110 mm" with YOY max length around 20-60 mm. Outliers Removed > 110.
 
 
 
@@ -162,44 +253,62 @@ Background suggests bay anchovy are "No bigger than max lengths of 110 mm" . Out
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 men <- lengths[grepl('brevoortia tyrannus', scientific)]
 
-h9<-ggplot(data=men, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+men <- men %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+h9<-ggplot(data=men  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h9,tooltip = "text")
+
+m9<-ggplot(data=men  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m9,tooltip = "text")
 ```
 
-Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY max length around 350 mm. 
+Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY max length around 80-170 mm. 
 
 ### Gizzard shad
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 shad <- lengths[grepl('dorosoma cepedianum', scientific)]
 
-h10<-ggplot(data=shad, aes(x=wk, y=counts,  fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+shad <- shad %>% mutate(YOY =
+                     case_when(length < 180 ~ "YOY", 
+                               length >= 180 ~ "1+")
+) #adding YOY threshold
+
+h10<-ggplot(data=shad  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h10,tooltip = "text")
+
+m10<-ggplot(data=shad  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m10,tooltip = "text")
 ```
-Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm" 
+Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm" with YOY max length around 100-180 mm
 
 ### White perch
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 perch <- lengths[grepl('morone americana', scientific)]
 
-h11<-ggplot(data=perch, aes(x=wk, y=counts,  fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
+perch <- perch %>% mutate(YOY =
+                     case_when(length < 93 ~ "YOY", 
+                               length >= 93 ~ "1+")
+) #adding YOY threshold
+
+h11<-ggplot(data=perch  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h11,tooltip = "text")
+
+m11<-ggplot(data=perch  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+  geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
+
+ggplotly(m11,tooltip = "text")
 ```
 Background suggests white perch are "No bigger than max lengths of 580 mm" with YOY max length around 100-250 mm
-
-
-
-###Threadfin Shad
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-petenense <- lengths[grepl('petenense', scientific)]
-
-h12<-ggplot(data=petenense, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
-  geom_bar(stat="identity")+ ggtitle("Length by week") 
-
-ggplotly(h12)
-```
