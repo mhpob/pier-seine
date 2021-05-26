@@ -1,5 +1,5 @@
 library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr)
-lengths <- fread('data/derived/lengths.csv')
+lengths <- fread('data/derived/lengths2.csv')
 lengths[, yr_fac := as.factor(year)]
 lengths[, record_num := as.factor(record_num)]
 lengths[, wk := week(date)]
@@ -12,20 +12,20 @@ unique(lengths$scientific)
 
   # correction
 
-lengths$scientific <- gsub('Menidia mendia', 'Menidia menidia', lengths$scientific)
-lengths$scientific <- gsub('Menidia menida', 'Menidia menidia', lengths$scientific)
-lengths$scientific <- gsub('Brevoortia tyrannus_2', 'Brevoortia tyrannus', lengths$scientific)
-lengths$scientific <- gsub('Dorosoma petense', 'Dorosoma petenense', lengths$scientific)
-lengths$scientific <- gsub('Membras beryllilna', 'Menidia beryllina', lengths$scientific)
-lengths$scientific <- gsub('Stronglyura marina', 'Strongylura marina', lengths$scientific)
-lengths$scientific <- gsub('Strongyluta marina', 'Strongylura marina', lengths$scientific)
-lengths$scientific <- gsub('Fundulus heterclitus', 'Fundulus heteroclitus', lengths$scientific)
-lengths$scientific <- gsub('HypsoblenniusÂ hentzÂ ', 'Hypsoblennius hentz', lengths$scientific)
-lengths$scientific <- gsub('Pogonias chromis', 'Pogonias cromis', lengths$scientific)
-lengths$scientific <- gsub('Striped bass', 'Morone saxatilis', lengths$scientific)
-lengths$scientific <- gsub('Sygnathus fuscus', 'Syngnathus fuscus', lengths$scientific)
-lengths$scientific <- gsub('Morone Saxatilis', 'Morone saxatilis', lengths$scientific)
-lengths$scientific <- gsub('Brevoortia Tyrannus', 'Brevoortia tyrannus', lengths$scientific)
+lengths$scientific <- gsub('menidia mendia', 'menidia menidia', lengths$scientific)
+lengths$scientific <- gsub('menidia menida', 'menidia menidia', lengths$scientific)
+lengths$scientific <- gsub('brevoortia tyrannus_2', 'brevoortia tyrannus', lengths$scientific)
+lengths$scientific <- gsub('dorosoma petense', 'dorosoma petenense', lengths$scientific)
+lengths$scientific <- gsub('membras beryllilna', 'menidia beryllina', lengths$scientific)
+lengths$scientific <- gsub('stronglyura marina', 'strongylura marina', lengths$scientific)
+lengths$scientific <- gsub('strongyluta marina', 'strongylura marina', lengths$scientific)
+lengths$scientific <- gsub('Fundulus heterclitus', 'sundulus heteroclitus', lengths$scientific)
+lengths$scientific <- gsub('hypsoblenniusÂ hentzÂ ', 'hypsoblennius hentz', lengths$scientific)
+lengths$scientific <- gsub('pogonias chromis', 'pogonias cromis', lengths$scientific)
+lengths$scientific <- gsub('striped bass', 'morone saxatilis', lengths$scientific)
+lengths$scientific <- gsub('sygnathus fuscus', 'syngnathus fuscus', lengths$scientific)
+lengths$scientific <- gsub('morone Saxatilis', 'morone saxatilis', lengths$scientific)
+lengths$scientific <- gsub('brevoortia Tyrannus', 'brevoortia tyrannus', lengths$scientific)
 
 unique(lengths$scientific)
  fwrite(lengths, 'data/derived/lengths(QAQC2).csv')

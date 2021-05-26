@@ -67,7 +67,7 @@ outlierReplace = function(dataframe, cols, rows, newValue = NA) {
 ### Atlantic Silversides
 
 ```{r ASS, echo=FALSE, message=FALSE, warning=FALSE}
-a.ss <- lengths[grepl('Menidia menidia', scientific)]
+a.ss <- lengths[grepl('menidia menidia', scientific)]
 
 h1<-ggplot(data=a.ss, aes(x=wk, y=counts, fill = length, color = length,order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
@@ -79,7 +79,7 @@ Background suggests Atlantic silversides are "No bigger than max lengths of 180m
 
 ### Atlantic needlefish
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-need <- lengths[grepl('Strongylura', scientific)]
+need <- lengths[grepl('strongylura', scientific)]
 
 h2<-ggplot(data=need, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
@@ -160,7 +160,7 @@ Background suggests bay anchovy are "No bigger than max lengths of 110 mm" . Out
 
 ### Menhaden
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-men <- lengths[grepl('Brevoortia tyrannus', scientific)]
+men <- lengths[grepl('brevoortia tyrannus', scientific)]
 
 h9<-ggplot(data=men, aes(x=wk, y=counts, fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
   geom_bar(stat="identity")+ ggtitle("Length by week") 
@@ -172,7 +172,7 @@ Background suggests menhaden are "No bigger than max lengths of 500 mm" with YOY
 
 ### Gizzard shad
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-shad <- lengths[grepl('Dorosoma cepedianum', scientific)]
+shad <- lengths[grepl('dorosoma cepedianum', scientific)]
 
 h10<-ggplot(data=shad, aes(x=wk, y=counts,  fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
   geom_bar(stat="identity")+ ggtitle("Length by week") 
@@ -183,7 +183,7 @@ Background suggests bay gizzard shad are "No bigger than max lengths of 570 mm"
 
 ### White perch
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-perch <- lengths[grepl('Morone americana', scientific)]
+perch <- lengths[grepl('morone americana', scientific)]
 
 h11<-ggplot(data=perch, aes(x=wk, y=counts,  fill = length, color = length, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T))+
   geom_bar(stat="identity")+ ggtitle("Length by week") 
@@ -191,3 +191,15 @@ h11<-ggplot(data=perch, aes(x=wk, y=counts,  fill = length, color = length, orde
 ggplotly(h11,tooltip = "text")
 ```
 Background suggests white perch are "No bigger than max lengths of 580 mm" with YOY max length around 100-250 mm
+
+
+
+###Threadfin Shad
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+petenense <- lengths[grepl('petenense', scientific)]
+
+h12<-ggplot(data=petenense, aes(x=wk, y=counts, fill = length), show.legend=FALSE) +
+  geom_bar(stat="identity")+ ggtitle("Length by week") 
+
+ggplotly(h12)
+```
