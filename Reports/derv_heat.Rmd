@@ -1,0 +1,86 @@
+---
+title: "Try derivative heat maps"
+output: html_notebook
+---
+
+
+Thought is here to make a "heat map". Week on x axis, quantile on y axis, length/1st/2nd deriv is color.
+
+```{r}
+library(data.table); library(qgam); library(ggplot2); library(gratia)
+
+lengths <- fread('data/derived/lengths2.csv')
+```
+
+```{r}
+temp <- lengths[scientific == 'Anchoa mitchilli']
+temp[, yr_fac := as.factor(year)]
+  
+qr <- tryCatch(
+  mqgam(list(length ~ s(wk, k = 20) + s(yr_fac, bs = 're'),
+             ~s(wk, k = 20)),
+        data = temp,
+        qu = seq(0.1, 0.9, 0.1),
+        multicore = T),
+  error = function(e) 'Model did not converge.')
+```
+
+```{r}
+new_data <- data.table(wk = seq(min(temp$wk), max(temp$wk), 1),
+                       yr_fac = 2010)
+
+pred <- sapply(seq(0.1, 0.9, 0.1),
+               function(.) qdo(qr, qu = ., predict,
+                               newdata = new_data, exclude = 's(yr_fac)',
+                               type = 'response'))
+
+pred <- melt(data.table(pred), variable.name = 'quantile')
+pred[, quantile := as.numeric(gsub('V', '0.', quantile))]
+
+pred <- cbind(new_data, pred)
+
+ggplot(data = pred, aes(x = wk, y = quantile)) +
+  geom_contour_filled(aes(z = value)) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0)) +
+  scale_fill_viridis_d(option = 'rocket')
+```
+
+```{r}
+pred_d1 <- lapply(seq(0.1, 0.9, 0.1),
+                  function(.) qdo(qr, qu = ., derivatives, 's(wk)'))
+
+
+pred_d1 <- rbindlist(pred_d1, idcol = 'quantile')
+
+
+pred_d1[, quantile := as.numeric(paste0('0.', quantile))]
+
+
+ggplot(data = pred_d1, aes(x = data, y = quantile)) +
+  geom_contour_filled(aes(z = derivative)) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0)) +
+  scale_fill_viridis_d(option = 'rocket')
+```
+
+
+```{r}
+pred_d2 <- lapply(seq(0.1, 0.9, 0.1),
+                  function(.) qdo(qr, qu = ., derivatives, 's(wk)',
+                                  order = 2, eps = 1e-3))
+
+
+pred_d2 <- rbindlist(pred_d2, idcol = 'quantile')
+
+
+pred_d2[, quantile := as.numeric(paste0('0.', quantile))]
+
+
+ggplot(data = pred_d2, aes(x = data, y = quantile)) +
+  geom_contour_filled(aes(z = derivative)) +
+  scale_x_discrete(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0)) +
+  scale_fill_viridis_d(option = 'rocket')
+```
+
