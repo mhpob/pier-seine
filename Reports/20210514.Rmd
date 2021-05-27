@@ -1,0 +1,146 @@
+---
+title: "Quantile reg"
+author: "Mike O'Brien"
+date: '2021-05-14'
+output:
+  html_document:
+    toc: yes
+    toc_depth: '4'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE, error = TRUE,
+  dev = "png", dpi = 144
+)
+```
+
+## Load packages and data
+```{r}
+library(data.table); library(qgam); library(mgcViz); library(ggplot2)
+
+lengths <- fread('data/derived/lengths (qaqc).csv')
+```
+
+## Update to the observation raster:
+
+```{r}
+l_summary <- lengths[, .N, by = c('scientific', 'wk', 'year')]
+setorder(l_summary, year, wk)
+
+plot_order <- l_summary[, .(incidence = sum(.N)), by = 'scientific']
+setorder(plot_order, incidence)
+
+l_summary[, scientific := factor(scientific, order = T,
+                                    levels = plot_order$scientific)]
+
+ggplot(data = l_summary) +
+  geom_raster(aes(y = scientific, x = interaction(wk, year))) +
+  labs(x = 'Time, increasing ->', y = NULL) +
+  theme(axis.text.x = element_blank())
+```
+
+### Focusing on the most-frequent 10
+
+```{r}
+ggplot(data = l_summary[scientific %in% tail(plot_order, 10)$scientific,]) +
+  geom_raster(aes(y = scientific, x = interaction(wk, year))) +
+  labs(x = 'Time, increasing ->', y = NULL) +
+  theme(axis.text.x = element_blank())
+```
+
+
+
+```{r results = 'asis', echo=FALSE}
+spp_sub <- tail(plot_order, 10)$scientific
+spp_sub <- spp_sub[10:1]
+
+for(i in spp_sub){
+  temp <- lengths[scientific == i][order(wk)]
+  
+  
+  cat("\n") 
+  cat("##", i, "\n") # Create new sections with the names.
+  
+  cat('### Raw length frequency\n')
+  
+  nrecords <- temp[, .N, by = 'wk'][order(wk)]
+  times <- NULL
+  
+  for(j in 1:nrow(nrecords)){
+    if(nrecords[j]$N == 1){
+      times <- c(times, nrecords[j]$wk)
+    }else{
+      times <- c(times, rep(nrecords[j]$wk, 2 ^ 8))
+    }
+  }
+  
+  print(
+    
+    ggplot() +
+      geom_point(data = temp, aes(x = wk, y = length)) +
+      geom_density(data = temp, aes(x = after_stat(scaled) * 0.9, y = length, group = wk),
+                   n = 2 ^ 8,
+                   position = position_nudge(x = times),
+                   trim = T, adjust = 1.5)
+
+    
+  )
+  
+  cat("\n")
+  
+  cat("### Quantile regression\n")
+  
+  cat("\n")
+  
+  temp[, yr_fac := as.factor(year)]
+  
+  qr <- tryCatch(
+    mqgam(list(length ~ s(wk, k = 20) + s(yr_fac, bs = 're'),
+               ~s(wk, k = 20)),
+          data = temp,
+          qu = seq(0.1, 0.9, 0.1),
+          multicore = T),
+    error = function(e) 'Model did not converge.')
+    
+  cat("\n")
+  
+  if(!is.character(qr)){
+  qr_vis <- getViz(qr)
+  
+  
+  print(
+    plot(qr_vis, select = 1)
+  )  
+  
+  cat("\n")
+  
+  time_seq <- seq(min(temp$wk), max(temp$wk), length.out = 100)
+  preds <- sapply(qr_vis, predict,
+                  newdata = data.frame(wk = time_seq, yr_fac = '2019'),
+                  exclude = 's(yr_fac)')
+  
+  preds <- as.data.table(cbind(preds, wk = time_seq))
+  preds <- melt(preds, id.vars = 'wk', variable.name = 'quantile')
+  
+  print(
+    ggplot() +
+      geom_point(data = temp, aes(x = wk, y = length)) +
+      geom_line(data = preds, aes(x = wk, y = value, group = quantile),
+                color = 'red')+
+      geom_density(data = temp, aes(x = after_stat(scaled) * 0.9, y = length, group = wk),
+                   n = 2 ^ 8,
+                   position = position_nudge(x = times),
+                   trim = T, adjust = 1.5)
+  )
+  
+  }
+  
+   cat("\n")
+}
+
+
+```
+
+
+
