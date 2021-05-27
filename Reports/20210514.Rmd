@@ -1,5 +1,5 @@
 ---
-title: "Quantile reg"
+title: "Quantile reg; Adaptive smooths"
 author: "Mike O'Brien"
 date: '2021-05-14'
 output:
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 ```{r}
 library(data.table); library(qgam); library(mgcViz); library(ggplot2)
 
-lengths <- fread('data/derived/lengths (qaqc).csv')
+lengths <- fread('data/derived/lengths2.csv')
 ```
 
 ## Update to the observation raster:
@@ -96,8 +96,8 @@ for(i in spp_sub){
   temp[, yr_fac := as.factor(year)]
   
   qr <- tryCatch(
-    mqgam(list(length ~ s(wk, k = 20) + s(yr_fac, bs = 're'),
-               ~s(wk, k = 20)),
+    mqgam(list(length ~ s(wk, bs = 'ad') + s(yr_fac, bs = 're'),
+               ~s(wk, bs = 'ad')),
           data = temp,
           qu = seq(0.1, 0.9, 0.1),
           multicore = T),
