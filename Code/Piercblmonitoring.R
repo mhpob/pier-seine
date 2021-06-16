@@ -6,26 +6,21 @@ library(tibble); library(readr);library(lubridate); library(janitor); library(an
 temp <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/CBL_pier_temp_2003_2021.csv')
 temp <- temp[-c(1), ] 
 temp <- janitor::row_to_names(temp,row_number =1 )
-names(temp)[names(temp) == 'Value (degrees Celcius)'] <- 'Temp_C'   
+names(temp)[names(temp) == 'Value (degrees Celcius)'] <- 'temp'   
 names(temp)[names(temp) == 'Timestamp (UTC-05:00)'] <- 'Date'
 
 temp$Date <-anytime::anytime(temp$Date)
-temp$Temp_C <- as.numeric(temp$Temp_C)
+temp$temp <- as.numeric(temp$temp)
+temp <- na.omit(temp)
 
-          temp %>%
-            mutate(date = floor_date(Date)) %>%
-            group_by(date) %>%
-            summarise(mean_Temp_C = mean(Temp_C))
           
         dailytemp <-  temp %>%
             mutate(date = date(Date)) %>%
             group_by(date) %>%
-            summarise(mean_Temp_C = mean(Temp_C))
+            summarise(temp = mean(temp))
         
         
-        #dailytemp <- separate(dailytemp, date, into = c('year', 'month', 'day'), remove = FALSE)       
-        names(dailytemp)[names(dailytemp) == 'mean_Temp_C'] <- 'temp' 
-
+      
 #Salinity
         
 sal <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/CBL_pier_salinity_2003_2021.csv')
@@ -36,20 +31,15 @@ names(sal)[names(sal) == 'Timestamp (UTC-05:00)'] <- 'Date'
 
 sal$Date <-anytime::anytime(sal$Date)
 sal$sal <- as.numeric(sal$sal)
+sal <- na.omit(sal)
 
-sal %>%
-  mutate(date = floor_date(Date)) %>%
-  group_by(date) %>%
-  summarise(mean_sal = mean(sal))
 
 dailysal <-  sal %>%
   mutate(date = date(Date)) %>%
   group_by(date) %>%
-  summarise(mean_sal = mean(sal))
+  summarise(sal = mean(sal))
 
 
-#dailysal <- separate(dailysal, date, into = c('year', 'month', 'day'), remove = FALSE)
-names(dailysal)[names(dailysal) == 'mean_sal'] <- 'sal'
 
 #Dissolved Oxygen
 
@@ -61,20 +51,18 @@ names(DO)[names(DO) == 'Timestamp (UTC-05:00)'] <- 'Date'
 
 DO$Date <-anytime::anytime(DO$Date)
 DO$DO <- as.numeric(DO$DO)
+DO <- na.omit(DO)
 
-DO %>%
-  mutate(date = floor_date(Date)) %>%
-  group_by(date) %>%
-  summarise(mean_DO = mean(DO))
+#DO2 <- DO[,median(DO),Date]
 
 dailyDO <-  DO %>%
   mutate(date = date(Date)) %>%
   group_by(date) %>%
-  summarise(mean_DO = mean(DO))
+  summarise(DO = mean(DO))
 
 
 #dailyDO <- separate(dailyDO, date, into = c('year', 'month', 'day'), remove = FALSE)
-names(dailyDO)[names(dailyDO) == 'mean_DO'] <- 'DO'
+
 
 
 #pH
@@ -87,20 +75,14 @@ names(pH)[names(pH) == 'Timestamp (UTC-05:00)'] <- 'Date'
 
 pH$Date <-anytime::anytime(pH$Date)
 pH$pH <- as.numeric(pH$pH)
-
-pH %>%
-  mutate(date = floor_date(Date)) %>%
-  group_by(date) %>%
-  summarise(mean_pH = mean(pH))
+pH <- na.omit(pH)
 
 dailypH <-  pH %>%
   mutate(date = date(Date)) %>%
   group_by(date) %>%
-  summarise(mean_pH = mean(pH))
+  summarise(pH = mean(pH))
 
 
-#dailypH <- separate(dailypH, date, into = c('year', 'month', 'day'), remove = FALSE)
-names(dailypH)[names(dailypH) == 'mean_pH'] <- 'pH'
 
 #NAO
 
@@ -119,3 +101,8 @@ edata <- merge(dailyDO, dailytemp, by="date", all.x = TRUE, all.y = TRUE)
 edata <- merge(edata, dailysal, by="date", all.x = TRUE, all.y = TRUE)
 edata <- merge(edata, dailypH, by="date", all.x = TRUE, all.y = TRUE)
 #edata <- merge(edata, NAO, by="date", all.x = TRUE, all.y = TRUE)
+
+
+lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
+lengths$date <- anytime::anydate(lengths$date)
+alldata <- merge(lengths, edata, by="date", all.x = TRUE, all.y = TRUE)
