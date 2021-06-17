@@ -1,9 +1,12 @@
+library(data.table); library(qgam); library(mgcViz); library(ggplot2)
 
-
-test.9 <- qgam(list(length ~ s(wk, by = yr_fac,  m = 3) +
-                      s(yr_fac, bs = 'fs', m = 3), 
-                    ~s(wk)), 
-               data = temp, qu = 0.9, 
+lengths <- fread('data/derived/lengths2.csv')
+temp <- lengths[scientific == 'anchoa mitchilli']
+temp[, yr_fac := factor(year)]
+test.1 <- qgam(list(length ~ s(wk, by = yr_fac, bs = 'ad', m = 5) +
+                      s(yr_fac, bs = 'fs', m = 5), 
+                    ~s(wk, bs = 'ad')), 
+               data = temp, qu = 0.1, 
                multicore = T)
 
 ## 2000 ----
