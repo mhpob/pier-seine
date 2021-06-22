@@ -17,7 +17,7 @@ temp <- na.omit(temp)
         dailytemp <-  temp %>%
             mutate(date = date(Date)) %>%
             group_by(date) %>%
-            summarise(temp = mean(temp))
+            summarise(temp = median(temp))
         
         
       
@@ -37,7 +37,7 @@ sal <- na.omit(sal)
 dailysal <-  sal %>%
   mutate(date = date(Date)) %>%
   group_by(date) %>%
-  summarise(sal = mean(sal))
+  summarise(sal = median(sal))
 
 
 
@@ -58,7 +58,7 @@ DO <- na.omit(DO)
 dailyDO <-  DO %>%
   mutate(date = date(Date)) %>%
   group_by(date) %>%
-  summarise(DO = mean(DO))
+  summarise(DO = median(DO))
 
 
 #dailyDO <- separate(dailyDO, date, into = c('year', 'month', 'day'), remove = FALSE)
@@ -80,7 +80,7 @@ pH <- na.omit(pH)
 dailypH <-  pH %>%
   mutate(date = date(Date)) %>%
   group_by(date) %>%
-  summarise(pH = mean(pH))
+  summarise(pH = median(pH))
 
 
 
@@ -106,3 +106,18 @@ edata <- merge(edata, dailypH, by="date", all.x = TRUE, all.y = TRUE)
 lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
 lengths$date <- anytime::anydate(lengths$date)
 alldata <- merge(lengths, edata, by="date", all.x = TRUE, all.y = TRUE)
+
+
+#merge with lengths
+
+alldata$temp.x <- ifelse(is.na(alldata$temp.x), alldata$temp.y, alldata$temp.x)
+alldata$sal.x <- ifelse(is.na(alldata$sal.x), alldata$sal.y, alldata$sal.x)
+alldata$temp.x <- signif(alldata$temp.x,digits=3)
+alldata$sal.x <- signif(alldata$sal.x,digits=3)
+alldata$DO <- signif(alldata$DO,digits=3)
+alldata$pH <- signif(alldata$pH,digits=3)
+
+alldata <- alldata[!is.na(alldata$length),]
+names(alldata)[names(alldata) == 'temp.x'] <- 'temp'
+names(alldata)[names(alldata) == 'sal.x'] <- 'sal'
+fwrite(alldata, 'data/derived/lengths-edata.csv')
