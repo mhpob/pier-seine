@@ -18,9 +18,8 @@ temp <- na.omit(temp)
             mutate(date = date(Date)) %>%
             group_by(date) %>%
             summarise(temp = median(temp))
-        
-        
-      
+
+           
 #Salinity
         
 sal <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/CBL_pier_salinity_2003_2021.csv')
@@ -121,3 +120,24 @@ alldata <- alldata[!is.na(alldata$length),]
 names(alldata)[names(alldata) == 'temp.x'] <- 'temp'
 names(alldata)[names(alldata) == 'sal.x'] <- 'sal'
 fwrite(alldata, 'data/derived/lengths-edata.csv')
+
+outlierReplace(alldata, "temp", which(alldata$temp < 1), NA)                
+
+
+#checking for gaps
+
+h1<-ggplot(data=alldata, 
+           aes(x=date, y=temp), #order = reorder(temp, -temp), 
+           text = paste("Temp:", temp, "Date:", date), show.legend=T)+
+  geom_point(stat="identity", aes(color = temp))+ geom_line(size=.3) + scale_color_gradient(low="blue", high="red")      
+     
+ggplotly(h1)  
+
+outlierReplace(alldata, "sal", which(alldata$sal < 1), NA)                
+
+h2<-ggplot(data=alldata, 
+           aes(x=date, y=sal), #order = reorder(temp, -temp), 
+           text = paste("Temp:", temp, "Date:", date), show.legend=T)+
+  geom_point(stat="identity", aes(color = sal))+ geom_line(size=.3) + scale_color_gradient(low="blue", high="goldenrod2")      
+
+ggplotly(h2)  
