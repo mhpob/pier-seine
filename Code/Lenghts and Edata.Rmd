@@ -1,0 +1,870 @@
+---
+title: "Lengths and Enviormental Data"
+author: "Ben Frey"
+date: "6/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#https://rpubs.com/FlyFrey/qaqclengths
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr);
+library(tibble); library(readr)
+lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths-edata.csv')
+lengths[, yr_fac := as.factor(year)]
+lengths[, record_num := as.factor(record_num)]
+lengths[, wk := week(date)]
+lengths[, length2 := as.factor(length)]
+
+vec <- c(1)
+lengths$counts <- vec
+
+gg_qq <- function(x, distribution = "norm", ..., line.estimate = NULL, conf = 0.95,
+                    labels = names(x)){
+    q.function <- eval(parse(text = paste0("q", distribution)))
+    d.function <- eval(parse(text = paste0("d", distribution)))
+    x <- na.omit(x)
+    ord <- order(x)
+    n <- length(x)
+    P <- ppoints(length(x))
+    df <- data.frame(ord.x = x[ord], z = q.function(P, ...))
+    
+    if(is.null(line.estimate)){
+      Q.x <- quantile(df$ord.x, c(0.25, 0.75))
+      Q.z <- q.function(c(0.25, 0.75), ...)
+      b <- diff(Q.x)/diff(Q.z)
+      coef <- c(Q.x[1] - b * Q.z[1], b)
+    } else {
+      coef <- coef(line.estimate(ord.x ~ z))
+    }
+    
+    zz <- qnorm(1 - (1 - conf)/2)
+    SE <- (coef[2]/d.function(df$z)) * sqrt(P * (1 - P)/n)
+    fit.value <- coef[1] + coef[2] * df$z
+    df$upper <- fit.value + zz * SE
+    df$lower <- fit.value - zz * SE
+    
+    if(!is.null(labels)){ 
+      df$label <- ifelse(df$ord.x > df$upper | df$ord.x < df$lower, labels[ord],"")
+    }
+    
+    p <- ggplot(df, aes(x=z, y=ord.x)) +
+      geom_point() + 
+      geom_abline(intercept = coef[1], slope = coef[2]) +
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) 
+    if(!is.null(labels)) p <- p + geom_text( aes(label = label))
+    print(p)
+    coef
+}
+
+outlierReplace = function(dataframe, cols, rows, newValue = NA) {
+  if (any(rows)) {
+    set(dataframe, rows, cols, newValue)
+  }
+}
+```
+
+## Temperature
+### Atlantic Silverside
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+a.ss <- lengths[grepl('menidia menidia', scientific)]
+
+a.ss <- a.ss %>% mutate(YOY =
+                     case_when(length <= 80 ~ "YOY", 
+                               length > 80 ~ "1+")
+)#adding YOY threshold
+
+outlierReplace(a.ss, "temp", which(a.ss$temp < 1), NA)
+a.ss <- a.ss[!is.na(a.ss$temp),]
+
+h1<-ggplot(data=a.ss  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=a.ss  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+
+
+```
+
+### Atlantic needlefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+need <- lengths[grepl('strongylura', scientific)]
+
+need <- need %>% mutate(YOY =
+                     case_when(length < 400 ~ "YOY", 
+                               length >= 400 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(need, "temp", which(need$temp < 1), NA)
+need <- need[!is.na(need$temp),]
+
+h1<-ggplot(data=need  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=need  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### Blue crab
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+crab <- lengths[grepl('sapidus', scientific)]
+
+crab <- crab %>% mutate(YOY =
+                     case_when(length <= 128 ~ "YOY", 
+                               length > 128 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(crab, "temp", which(crab$temp < 1), NA)
+crab <- crab[!is.na(crab$temp),]
+
+h1<-ggplot(data=crab  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=crab  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+### Spot
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+spot <- lengths[grepl('xanthurus', scientific)]
+
+spot <- spot %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(spot, "temp", which(spot$temp < 1), NA)
+spot <- spot[!is.na(spot$temp),]
+
+h1<-ggplot(data=spot  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=spot  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+```
+
+
+
+### Inland silverside
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+inland <- lengths[grepl('beryllina', scientific)]
+
+inland <- inland %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(inland, "temp", which(inland$temp < 1), NA)
+inland <- inland[!is.na(inland$temp),]
+
+h1<-ggplot(data=inland  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=inland  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Striped bass
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+bass <- lengths[grepl('saxatilis', scientific)]
+
+bass <- bass %>% mutate(YOY =
+                     case_when(length < 270 ~ "YOY", 
+                               length >= 270 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(bass, "temp", which(bass$temp < 1), NA)
+bass <- bass[!is.na(bass$temp),]
+
+h1<-ggplot(data=bass  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=bass  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Bluefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+blue <- lengths[grepl('saltatrix', scientific)]
+
+blue <- blue %>% mutate(YOY =
+                     case_when(length < 140 ~ "YOY", 
+                               length >= 140 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(blue, "temp", which(blue$temp < 1), NA)
+blue <- blue[!is.na(blue$temp),]
+
+h1<-ggplot(data=blue  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=blue  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Bay anchovy
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ancho <- lengths[grepl('mitchilli', scientific)]
+outlierReplace(ancho, "length", which(ancho$length > 110), NA)  
+ancho <- ancho %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(ancho, "temp", which(ancho$temp < 1), NA)
+ancho <- ancho[!is.na(ancho$temp),]
+
+h1<-ggplot(data=ancho  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=ancho  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+```
+
+
+### Menhaden
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+men <- lengths[grepl('brevoortia tyrannus', scientific)]
+
+men <- men %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(men, "temp", which(men$temp < 1), NA)
+men <- men[!is.na(men$temp),]
+
+h1<-ggplot(data=men  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=men  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### Gizzard shad
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+shad <- lengths[grepl('dorosoma cepedianum', scientific)]
+
+shad <- shad %>% mutate(YOY =
+                     case_when(length < 180 ~ "YOY", 
+                               length >= 180 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(shad, "temp", which(shad$temp < 1), NA)
+shad <- shad[!is.na(shad$temp),]
+
+h1<-ggplot(data=shad  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=shad  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### White perch
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+perch <- lengths[grepl('morone americana', scientific)]
+
+perch <- perch %>% mutate(YOY =
+                     case_when(length < 93 ~ "YOY", 
+                               length >= 93 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(perch, "temp", which(perch$temp < 1), NA)
+perch <- perch[!is.na(perch$temp),]
+
+h1<-ggplot(data=perch  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"Temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = temp, fill = temp))+ ggtitle("YOY, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=perch  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(temp, -temp), text = paste("Week:", wk,"temp:", temp, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = temp, fill = temp))+ ggtitle("1+, temp by week") + scale_color_gradient(low="blue", high="red") + scale_fill_gradient(low="blue", high="red")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+## Salinity
+### Atlantic Silverside
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+a.ss <- lengths[grepl('menidia menidia', scientific)]
+
+a.ss <- a.ss %>% mutate(YOY =
+                     case_when(length <= 80 ~ "YOY", 
+                               length > 80 ~ "1+")
+)#adding YOY threshold
+
+outlierReplace(a.ss, "sal", which(a.ss$sal < 1), NA)
+a.ss <- a.ss[!is.na(a.ss$sal),]
+
+h1<-ggplot(data=a.ss  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=a.ss  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+
+
+```
+
+### Atlantic needlefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+need <- lengths[grepl('strongylura', scientific)]
+
+need <- need %>% mutate(YOY =
+                     case_when(length < 400 ~ "YOY", 
+                               length >= 400 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(need, "sal", which(need$sal < 1), NA)
+need <- need[!is.na(need$sal),]
+
+h1<-ggplot(data=need  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=need  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### Blue crab
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+crab <- lengths[grepl('sapidus', scientific)]
+
+crab <- crab %>% mutate(YOY =
+                     case_when(length <= 128 ~ "YOY", 
+                               length > 128 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(crab, "sal", which(crab$sal < 1), NA)
+crab <- crab[!is.na(crab$sal),]
+
+h1<-ggplot(data=crab  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=crab  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+### Spot
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+spot <- lengths[grepl('xanthurus', scientific)]
+
+spot <- spot %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(spot, "sal", which(spot$sal < 1), NA)
+spot <- spot[!is.na(spot$sal),]
+
+h1<-ggplot(data=spot  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=spot  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+```
+
+
+
+### Inland silverside
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+inland <- lengths[grepl('beryllina', scientific)]
+
+inland <- inland %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(inland, "sal", which(inland$sal < 1), NA)
+inland <- inland[!is.na(inland$sal),]
+
+h1<-ggplot(data=inland  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=inland  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Striped bass
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+bass <- lengths[grepl('saxatilis', scientific)]
+
+bass <- bass %>% mutate(YOY =
+                     case_when(length < 270 ~ "YOY", 
+                               length >= 270 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(bass, "sal", which(bass$sal < 1), NA)
+bass <- bass[!is.na(bass$sal),]
+
+h1<-ggplot(data=bass  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=bass  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Bluefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+blue <- lengths[grepl('saltatrix', scientific)]
+
+blue <- blue %>% mutate(YOY =
+                     case_when(length < 140 ~ "YOY", 
+                               length >= 140 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(blue, "sal", which(blue$sal < 1), NA)
+blue <- blue[!is.na(blue$sal),]
+
+h1<-ggplot(data=blue  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=blue  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Bay anchovy
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ancho <- lengths[grepl('mitchilli', scientific)]
+outlierReplace(ancho, "length", which(ancho$length > 110), NA)  
+ancho <- ancho %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(ancho, "sal", which(ancho$sal < 1), NA)
+ancho <- ancho[!is.na(ancho$sal),]
+
+h1<-ggplot(data=ancho  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=ancho  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+```
+
+
+### Menhaden
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+men <- lengths[grepl('brevoortia tyrannus', scientific)]
+
+men <- men %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(men, "sal", which(men$sal < 1), NA)
+men <- men[!is.na(men$sal),]
+
+h1<-ggplot(data=men  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=men  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### Gizzard shad
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+shad <- lengths[grepl('dorosoma cepedianum', scientific)]
+
+shad <- shad %>% mutate(YOY =
+                     case_when(length < 180 ~ "YOY", 
+                               length >= 180 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(shad, "sal", which(shad$sal < 1), NA)
+shad <- shad[!is.na(shad$sal),]
+
+h1<-ggplot(data=shad  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=shad  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### White perch
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+perch <- lengths[grepl('morone americana', scientific)]
+
+perch <- perch %>% mutate(YOY =
+                     case_when(length < 93 ~ "YOY", 
+                               length >= 93 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(perch, "sal", which(perch$sal < 1), NA)
+perch <- perch[!is.na(perch$sal),]
+
+h1<-ggplot(data=perch  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = sal, fill = sal))+ ggtitle("YOY, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=perch  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(sal, -sal), text = paste("Week:", wk,"sal:", sal, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = sal, fill = sal))+ ggtitle("1+, sal by week") + scale_color_gradient(low="blue", high="goldenrod2") + scale_fill_gradient(low="blue", high="goldenrod2")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+## Dissolved Oxygen
+### Atlantic Silverside
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+a.ss <- lengths[grepl('menidia menidia', scientific)]
+
+a.ss <- a.ss %>% mutate(YOY =
+                     case_when(length <= 80 ~ "YOY", 
+                               length > 80 ~ "1+")
+)#adding YOY threshold
+
+outlierReplace(a.ss, "DO", which(a.ss$DO < 1), NA)
+a.ss <- a.ss[!is.na(a.ss$DO),]
+
+h1<-ggplot(data=a.ss  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=a.ss  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+
+
+```
+
+### Atlantic needlefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+need <- lengths[grepl('strongylura', scientific)]
+
+need <- need %>% mutate(YOY =
+                     case_when(length < 400 ~ "YOY", 
+                               length >= 400 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(need, "DO", which(need$DO < 1), NA)
+need <- need[!is.na(need$DO),]
+
+h1<-ggplot(data=need  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=need  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### Blue crab
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+crab <- lengths[grepl('sapidus', scientific)]
+
+crab <- crab %>% mutate(YOY =
+                     case_when(length <= 128 ~ "YOY", 
+                               length > 128 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(crab, "DO", which(crab$DO < 1), NA)
+crab <- crab[!is.na(crab$DO),]
+
+h1<-ggplot(data=crab  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=crab  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+### Spot
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+spot <- lengths[grepl('xanthurus', scientific)]
+
+spot <- spot %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(spot, "DO", which(spot$DO < 1), NA)
+spot <- spot[!is.na(spot$DO),]
+
+h1<-ggplot(data=spot  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=spot  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+```
+
+
+
+### Inland silverside
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+inland <- lengths[grepl('beryllina', scientific)]
+
+inland <- inland %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(inland, "DO", which(inland$DO < 1), NA)
+inland <- inland[!is.na(inland$DO),]
+
+h1<-ggplot(data=inland  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=inland  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Striped bass
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+bass <- lengths[grepl('saxatilis', scientific)]
+
+bass <- bass %>% mutate(YOY =
+                     case_when(length < 270 ~ "YOY", 
+                               length >= 270 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(bass, "DO", which(bass$DO < 1), NA)
+bass <- bass[!is.na(bass$DO),]
+
+h1<-ggplot(data=bass  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=bass  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Bluefish
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+blue <- lengths[grepl('saltatrix', scientific)]
+
+blue <- blue %>% mutate(YOY =
+                     case_when(length < 140 ~ "YOY", 
+                               length >= 140 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(blue, "DO", which(blue$DO < 1), NA)
+blue <- blue[!is.na(blue$DO),]
+
+h1<-ggplot(data=blue  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=blue  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+```
+
+### Bay anchovy
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ancho <- lengths[grepl('mitchilli', scientific)]
+outlierReplace(ancho, "length", which(ancho$length > 110), NA)  
+ancho <- ancho %>% mutate(YOY =
+                     case_when(length < 60 ~ "YOY", 
+                               length >= 60 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(ancho, "DO", which(ancho$DO < 1), NA)
+ancho <- ancho[!is.na(ancho$DO),]
+
+h1<-ggplot(data=ancho  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=ancho  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+```
+
+
+### Menhaden
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+men <- lengths[grepl('brevoortia tyrannus', scientific)]
+
+men <- men %>% mutate(YOY =
+                     case_when(length < 170 ~ "YOY", 
+                               length >= 170 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(men, "DO", which(men$DO < 1), NA)
+men <- men[!is.na(men$DO),]
+
+h1<-ggplot(data=men  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=men  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### Gizzard shad
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+shad <- lengths[grepl('dorosoma cepedianum', scientific)]
+
+shad <- shad %>% mutate(YOY =
+                     case_when(length < 180 ~ "YOY", 
+                               length >= 180 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(shad, "DO", which(shad$DO < 1), NA)
+shad <- shad[!is.na(shad$DO),]
+
+h1<-ggplot(data=shad  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=shad  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+
+```
+
+
+### White perch
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+perch <- lengths[grepl('morone americana', scientific)]
+
+perch <- perch %>% mutate(YOY =
+                     case_when(length < 93 ~ "YOY", 
+                               length >= 93 ~ "1+")
+) #adding YOY threshold
+
+outlierReplace(perch, "DO", which(perch$DO < 1), NA)
+perch <- perch[!is.na(perch$DO),]
+
+h1<-ggplot(data=perch  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes(color = DO, fill = DO))+ ggtitle("YOY, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(h1,tooltip = "text")
+
+m1<-ggplot(data=perch  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(DO, -DO), text = paste("Week:", wk,"DO:", DO, "Year:", year), show.legend=T)) +
+  geom_bar(stat="identity", aes( color = DO, fill = DO))+ ggtitle("1+, DO by week") + scale_color_gradient(low="red", high="limegreen") + scale_fill_gradient(low="red", high="limegreen")
+
+ggplotly(m1,tooltip = "text")
+
+```
