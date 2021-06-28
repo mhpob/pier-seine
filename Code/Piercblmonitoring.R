@@ -18,8 +18,22 @@ temp <- na.omit(temp)
             mutate(date = date(Date)) %>%
             group_by(date) %>%
             summarise(temp = median(temp))
+#Noaa TEMp
+temp2 <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/NOAA Temp Data.csv')
+names(temp2)[names(temp2) == 'degC'] <- 'temp'   
+temp2$Date <-anytime::anytime(temp2$Date)
 
-           
+dailytemp2 <-  temp2 %>%
+  mutate(date = date(Date)) %>%
+  group_by(date) %>%
+  summarise(temp = median(temp))
+
+
+dailytemp <- merge(dailytemp, dailytemp2, by="date", all.x = TRUE, all.y = TRUE)
+dailytemp$temp.x <- ifelse(is.na(dailytemp$temp.x), dailytemp$temp.y, dailytemp$temp.x)
+names(dailytemp)[names(dailytemp) == 'temp.x'] <- 'temp'
+dailytemp = subset(dailytemp, select = -c(temp.y) )
+
 #Salinity
         
 sal <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/CBL_pier_salinity_2003_2021.csv')
@@ -99,6 +113,7 @@ NAO <- NAO[-c(1:588), ]
 edata <- merge(dailyDO, dailytemp, by="date", all.x = TRUE, all.y = TRUE)
 edata <- merge(edata, dailysal, by="date", all.x = TRUE, all.y = TRUE)
 edata <- merge(edata, dailypH, by="date", all.x = TRUE, all.y = TRUE)
+
 #edata <- merge(edata, NAO, by="date", all.x = TRUE, all.y = TRUE)
 
 
@@ -119,12 +134,21 @@ alldata$pH <- signif(alldata$pH,digits=3)
 alldata <- alldata[!is.na(alldata$length),]
 names(alldata)[names(alldata) == 'temp.x'] <- 'temp'
 names(alldata)[names(alldata) == 'sal.x'] <- 'sal'
+
+outlierReplace = function(dataframe, cols, rows, newValue = NA) {
+  if (any(rows)) {
+    set(dataframe, rows, cols, newValue)
+  }
+}
+outlierReplace(alldata, "temp", which(alldata$temp > 199), NA)
+outlierReplace(alldata, "temp", which(alldata$temp < .1), NA)
 fwrite(alldata, 'data/derived/lengths-edata.csv')
 
-outlierReplace(alldata, "temp", which(alldata$temp < 1), NA)                
 
 
 #checking for gaps
+
+
 
 h1<-ggplot(data=alldata, 
            aes(x=date, y=temp), #order = reorder(temp, -temp), 
