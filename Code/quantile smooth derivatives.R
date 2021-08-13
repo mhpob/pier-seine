@@ -1,103 +1,352 @@
-library(data.table); library(qgam); library(mgcViz); library(ggplot2)
+library(data.table); library(qgam); library(gratia); library(ggplot2)
+
+derv_calc <- function(model, data, eps){
+  wks <- data[, .(mn = min(wk), mx = max(wk)), by = yr_fac]
+  
+  dervs <- lapply(levels(data$yr_fac), function(yr){
+    min_wk <- wks[yr_fac == yr]$mn
+    max_wk <- wks[yr_fac == yr]$mx
+    
+    newdat <- data.table(
+      yr_fac = yr,
+      wk = c(seq(min_wk, max_wk, length.out = 100),
+             #Nudge a bit to calculate 1st derivative
+             seq(min_wk, max_wk, length.out = 100) + eps,
+             #Nudge a bit more to calculate 2nd derivative
+             seq(min_wk, max_wk, length.out = 100) + eps*2)
+    )
+    
+    # Sample linear combination of terms from posterior
+    samples <- fitted_samples(model, n = 1000, seed = 42,
+                              terms = c('s(wk)', 's(yr_fac)',
+                                        paste0('s(wk):yr_fac', yr)),
+                              newdata = newdat,
+                              scale = 'linear_predictor')
+    
+    
+    samples <- split(samples, samples$draw)
+    # Rearrange data so fitted and nudged fitted values line up
+    samples <- lapply(samples, function(.){
+      data.table(.[1:100,],
+                 fitted_nudge = .$fitted[101:200],
+                 fitted_nudge2 = .$fitted[201:300],
+                 wk = newdat$wk[1:100])
+    })
+    
+    # Apply finite differences. don't really understand this, but it's from the 
+    #   gratia package code
+    samples <- lapply(samples, function(.){
+      data.table(.,
+                 d1 = (.$fitted_nudge - .$fitted) / 1.2,
+                 d2 = ((.$fitted_nudge2 - (2*.$fitted_nudge) + .$fitted) / 1.2^2))
+    })
+    
+    samples <- rbindlist(samples)
+    
+    # Calculate median and confidence intervals from draws
+    wk_ts <- samples[, .(lci_pred = quantile(fitted, 0.025),
+                         med_pred = quantile(fitted, 0.5),
+                         uci_pred = quantile(fitted, 0.975),
+                         lci_d1 = quantile(d1, 0.025),
+                         med_d1 = quantile(d1, 0.5),
+                         uci_d1 = quantile(d1, 0.975),
+                         lci_d2 = quantile(d2, 0.025, na.rm = T),
+                         med_d2 = quantile(d2, 0.5, na.rm = T),
+                         uci_d2 = quantile(d2, 0.975, na.rm = T)), by = wk]
+    
+    # Calculate median and confidence intervals of week of recruitment
+    trans_wk <- samples[samples[, .I[which.max(d2)], by = draw]$V1]
+    trans_wk <- trans_wk[, quantile(wk, c(0.025, 0.5, 0.975))]
+    
+    list(wk_ts, trans_wk)
+  })
+  
+  names(dervs) <- levels(data$yr_fac)
+  recruit_ts <- data.table(t(sapply(dervs, function(.) .[[2]])), keep.rownames = T)
+  setnames(recruit_ts, 'rn', 'year')
+  recruit_ts[, year := as.numeric(year)]
+  
+  dervs <- rbindlist(lapply(dervs, function(.) .[[1]]), idcol = 'yr_fac')
+  dervs <- data.table(dervs)[wks, on = 'yr_fac']
+  dervs <- dervs[between(wk, mn, mx)]
+  
+  list(recruit_ts = recruit_ts,
+       derivatives = dervs)
+}
 
 lengths <- fread('data/derived/lengths2.csv')
+
+
+#### SPOT ----
+spot <- lengths[scientific == 'leiostomus xanthurus']
+spot <- spot[year %in% unique(spot, by = c('year', 'wk'))[, .N >= 2, by = year][V1 == T]$year,]
+spot[, yr_fac := factor(year)]
+
+
+# model names follow types in Pedersen et al 2019
+# Global trend of week -- helps with data-poor years
+# job::job({
+#   spot_modGI <- qgam(length ~ 
+#                   s(wk, k = 11, m = 2) +
+#                   s(yr_fac, bs = 're') +
+#                   s(wk, by = yr_fac, k = 11, m = 1), 
+#                 data = spot,
+#                 qu = 0.05)
+#   saveRDS(spot_modGI, 'fitted models/spot_modGI.rds')
+# })
+# job::job({
+#   modI <- qgam(length ~ 
+#                   s(yr_fac, bs = 're') +
+#                   s(wk, by = yr_fac, k = 11, m = 2), 
+#                 data = spot,
+#                 qu = 0.05)
+# })
+
+
+spot_mod <- readRDS('fitted models/spot_modGI.rds')
+job::job(
+  {
+    spot_derv <- derv_calc(spot_mod, spot, 1.1)
+  },
+  packages = c('data.table', 'gratia')
+)
+
+
+ggplot(data= spot_derv$recruit_ts, aes(x = year, y = `50%`)) +
+  geom_pointrange(aes(ymin = `2.5%`, ymax = `97.5%`)) +
+  geom_line() +
+  labs(x = NULL, y = 'Week of recruitment', title = 'Spot') +
+  theme_minimal()
+
+ggplot(data = data.frame(predict(spot_mod,
+                                 newdata = data.frame(wk = seq(19, 42, length.out = 100)),
+                                 newdata.guaranteed = T, terms = 's(wk)', se.fit = T),
+                         week = seq(19, 42, length.out=100))) +
+  geom_ribbon(aes(x = week, ymin = fit - 1.96 * se.fit, ymax = fit + 1.96 * se.fit),
+              fill = 'lightgray') +
+  geom_line(aes(x = week, y = fit)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Spot, global effect of week') +
+  theme_minimal()
+
+ggplot(data = spot_derv$derivatives) +
+  geom_ribbon(aes(x = wk, ymin = lci_pred, ymax = uci_pred), fill = 'lightgray') +
+  geom_line(aes(x = wk, y = med_pred)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Spot, yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+
+ggplot(data = spot_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d1, ymax = uci_d1), fill = 'lightgray') +
+  geom_line(aes(y = med_d1)) +
+  labs(x = 'Week', y = 'Growth rate (mm/week)',
+       title = 'Spot, first derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+ggplot(data = spot_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d2, ymax = uci_d2), fill = 'lightgray') +
+  geom_line(aes(y = med_d2)) +
+  labs(x = 'Week', y = 'Change in growth rate (mm/week)',
+       title = 'Spot, second derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+
+
+#### ATLANTIC SILVERSIDE ----
+atl <- lengths[scientific == 'menidia menidia']
+atl <- atl[year %in% unique(atl, by = c('year', 'wk'))[, .N >= 2, by = year][V1 == T]$year,]
+atl[, yr_fac := factor(year)]
+
+# job::job({
+#   atl_modGI <- qgam(length ~
+#                       s(wk, k = 11, m = 2) +
+#                       s(yr_fac, bs = 're') +
+#                       s(wk, by = yr_fac, k = 11, m = 1),
+#                     data = atl,
+#                     qu = 0.05)
+#   saveRDS(atl_modGI, 'fitted models/atl_modGI.rds')
+# }, packages = 'qgam)
+
+atl_mod <- readRDS('atl_modGI.rds')
+job::job(
+  {
+    atl_derv <- derv_calc(atl_mod, atl, 1.1)
+  },
+  packages = c('data.table', 'gratia')
+)
+
+ggplot(data= atl_derv$recruit_ts, aes(x = year, y = `50%`)) +
+  geom_pointrange(aes(ymin = `2.5%`, ymax = `97.5%`)) +
+  geom_line() +
+  labs(x = NULL, y = 'Week of recruitment', title = 'Atlantic silverside') +
+  theme_minimal()
+
+
+ggplot(data = data.frame(predict(atl_mod,
+                                 newdata = data.frame(wk = seq(19, 42, length.out = 100)),
+                                 newdata.guaranteed = T, terms = 's(wk)', se.fit = T),
+                         week = seq(19, 42, length.out=100))) +
+  geom_ribbon(aes(x = week, ymin = fit - 1.96 * se.fit, ymax = fit + 1.96 * se.fit),
+              fill = 'lightgray') +
+  geom_line(aes(x = week, y = fit)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Atlantic silverside, global effect of week') +
+  theme_minimal()
+
+
+ggplot(data = atl_derv$derivatives) +
+  geom_ribbon(aes(x = wk, ymin = lci_pred, ymax = uci_pred), fill = 'lightgray') +
+  geom_line(aes(x = wk, y = med_pred)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Atlantic silverside, yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+
+ggplot(data = atl_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d1, ymax = uci_d1), fill = 'lightgray') +
+  geom_line(aes(y = med_d1)) +
+  labs(x = 'Week', y = 'Growth rate (mm/week)',
+       title = 'Atlantic silverside, first derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+
+ggplot(data = atl_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d2, ymax = uci_d2), fill = 'lightgray') +
+  geom_line(aes(y = med_d2)) +
+  labs(x = 'Week', y = 'Change in growth rate (mm/week)',
+       title = 'Atlantic silverside, second derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+
+
+
+#### BLUEFISH ----
+bf <- lengths[scientific == 'pomatomus saltatrix']
+bf <- bf[year %in% unique(bf, by = c('year', 'wk'))[, .N >= 2, by = year][V1 == T]$year,]
+bf[, yr_fac := factor(year)]
+
+
+# job::job({
+#   bf_modGI <- qgam(length ~
+#                      s(wk, k = 11, m = 2) +
+#                      s(yr_fac, bs = 're') +
+#                      s(wk, by = yr_fac, k = 11, m = 1),
+#                    data = bf,
+#                    qu = 0.05)
+#   saveRDS(bf_modGI, 'bf_modGI.rds')
+# }, packages = 'qgam')
+
+
+bf_mod <- readRDS('fitted models/bf_modGI.rds')
+job::job({
+  bf_derv <- derv_calc(bf_mod, bf, 1.1)
+}, packages = c('data.table', 'gratia'))
+
+
+ggplot(data= bf_derv$recruit_ts, aes(x = year, y = `50%`)) +
+  geom_pointrange(aes(ymin = `2.5%`, ymax = `97.5%`)) +
+  geom_line() +
+  labs(x = NULL, y = 'Week of recruitment') +
+  theme_minimal()
+
+
+ggplot(data = data.frame(predict(bf_mod,
+                                 newdata = data.frame(wk = seq(19, 42, length.out = 100)),
+                                 newdata.guaranteed = T, terms = 's(wk)', se.fit = T),
+                         week = seq(19, 42, length.out=100))) +
+  geom_ribbon(aes(x = week, ymin = fit - 1.96 * se.fit, ymax = fit + 1.96 * se.fit),
+              fill = 'lightgray') +
+  geom_line(aes(x = week, y = fit)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Bluefish, global effect of week') +
+  theme_minimal()
+
+ggplot(data = bf_derv$derivatives) +
+  geom_ribbon(aes(x = wk, ymin = lci_pred, ymax = uci_pred), fill = 'lightgray') +
+  geom_line(aes(x = wk, y = med_pred)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Bluefish, yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+
+ggplot(data = bf_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d1, ymax = uci_d1), fill = 'lightgray') +
+  geom_line(aes(y = med_d1)) +
+  labs(x = 'Week', y = 'Growth rate (mm/week)',
+       title = 'Bluefish, first derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+ggplot(data = bf_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d2, ymax = uci_d2), fill = 'lightgray') +
+  geom_line(aes(y = med_d2)) +
+  labs(x = 'Week', y = 'Change in growth rate (mm/week)',
+       title = 'Bluefish, second derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
+
+
+
+#### BAY ANCHOVY -----
 banch <- lengths[scientific == 'anchoa mitchilli']
-banch[, yr_fac := factor(year, ordered = T)]
+banch <- banch[year %in% unique(banch, by = c('year', 'wk'))[, .N >= 2, by = year][V1 == T]$year,]
+banch[, yr_fac := factor(year)]
 
-library(parallel)
-cl <- makeCluster(detectCores(logical = F) - 1)
-clusterEvalQ(cl, library(qgam))
-clusterExport(cl, 'banch')
+# job::job({
+#   banch_modGI <- qgam(length ~
+#                      s(wk, k = 11, m = 2) +
+#                      s(yr_fac, bs = 're') +
+#                      s(wk, by = yr_fac, k = 11, m = 1),
+#                    data = banch,
+#                    qu = 0.05)
+#   saveRDS(banch_modGI, 'fitted models/banch_modGI.rds')
+# }, packages = 'qgam')
 
-
-# test.05_m3 <- qgam(list(length ~ 
-#                       s(wk, m = 3) +
-#                       s(wk, yr_fac, bs = 'fs', xt = list(bs = 'ad'), m = 3), 
-#                     ~ s(wk)), 
-#                data = banch,
-#                qu = 0.05, 
-#                multicore = T,
-#                cluster = cl)
-
-test.05_m3 <- qgam(list(length ~ 
-                          # s(wk, bs ='cr', k = 24, m = 2) +
-                          s(wk, yr_fac, bs = 'fs', xt = list(bs = 'cr'),
-                            k = 24, m = 3), 
-                        ~ s(wk)), 
-                   data = banch,
-                   qu = 0.05, 
-                   multicore = T,
-                   cluster = cl)
-
-stopCluster(cl)
-
-plot(test.1)
-new_data <- expand.grid(wk = seq(min(banch$wk), max(banch$wk), 1),
-                        yr_fac = levels(banch$yr_fac))
+banch_mod <- readRDS('fitted models/banch_modGI.rds')
+job::job({
+  banch_derv <- derv_calc(banch_mod, banch, 1.1)
+}, packages = c('data.table', 'gratia'))
 
 
-test_pred <- data.frame(new_data,
-                        predict(test.05_m3, new_data,
-                                type = 'response', se.fit = TRUE))
-test_pred$lci <- test_pred$fit - 1.96 * test_pred$se.fit
-test_pred$uci <- test_pred$fit + 1.96 * test_pred$se.fit
-head(test_pred)
-
-ggplot(data=test_pred, aes(x=wk, y=fit)) +
-  facet_wrap(~yr_fac) +
-  geom_ribbon(aes(ymin=lci,
-                  ymax=uci), alpha=0.25) +
-  geom_line(aes(y=fit))
+ggplot(data= banch_derv$recruit_ts, aes(x = year, y = `50%`)) +
+  geom_pointrange(aes(ymin = `2.5%`, ymax = `97.5%`)) +
+  geom_line() +
+  labs(x = NULL, y = 'Week of recruitment') +
+  theme_minimal()
 
 
+ggplot(data = data.frame(predict(banch_mod,
+                                 newdata = data.frame(wk = seq(19, 42, length.out = 100)),
+                                 newdata.guaranteed = T, terms = 's(wk)', se.fit = T),
+                         week = seq(19, 42, length.out=100))) +
+  geom_ribbon(aes(x = week, ymin = fit - 1.96 * se.fit, ymax = fit + 1.96 * se.fit),
+              fill = 'lightgray') +
+  geom_line(aes(x = week, y = fit)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Bay anchovy, global effect of week') +
+  theme_minimal()
+
+ggplot(data = banch_derv$derivatives) +
+  geom_ribbon(aes(x = wk, ymin = lci_pred, ymax = uci_pred), fill = 'lightgray') +
+  geom_line(aes(x = wk, y = med_pred)) +
+  labs(x = 'Week', y = 'Length (mm)', title = 'Bay anchovy, yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
 
 
+ggplot(data = banch_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d1, ymax = uci_d1), fill = 'lightgray') +
+  geom_line(aes(y = med_d1)) +
+  labs(x = 'Week', y = 'Growth rate (mm/week)',
+       title = 'Bay anchovy, first derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
 
-
-## 2000 ----
-draw(test.1, select = 1) + 
-  draw(derivatives(test.1, 1, order = 1)) + 
-  draw(derivatives(test.1, 1, order = 2, eps = 0.9)) + 
-  plot_layout(2,2)
-
-## 2010 ----
-draw(test.1, select = 11) + 
-  draw(derivatives(test.1, 11, order = 1)) + 
-  draw(derivatives(test.1, 11, order = 2, eps = 0.00001)) + 
-  plot_layout(2,2)
-
-
-## 2019 ----
-draw(test.9, select = 20) + 
-  draw(derivatives(test.9, 20, order = 1)) + 
-  draw(derivatives(test.9, 20, order = 2, eps = 0.00001)) + 
-  plot_layout(2,2)
-
-
-
-
-test.1 <- qgam(list(length ~ s(wk, by = yr_fac,  m = 3) +
-                      s(yr_fac, bs = 'fs', m = 3), 
-                    ~s(wk)), 
-               data = temp, qu = 0.1, 
-               multicore = T)
-
-
-## 2000 ----
-draw(test.1, select = 1) + 
-  draw(derivatives(test.1, 1, order = 1)) + 
-  draw(derivatives(test.1, 1, order = 2, eps = 0.00001)) + 
-  plot_layout(2,2)
-
-## 2010 ----
-draw(test.1, select = 11) + 
-  draw(derivatives(test.1, 11, order = 1)) + 
-  draw(derivatives(test.1, 11, order = 2, eps = 0.00001)) + 
-  plot_layout(2,2)
-
-
-## 2019 ----
-draw(test.1, select = 20) + 
-  draw(derivatives(test.1, 20, order = 1)) + 
-  draw(derivatives(test.1, 20, order = 2, eps = 0.00001)) + 
-  plot_layout(2,2)
+ggplot(data = banch_derv$derivatives, aes(x = wk)) +
+  geom_ribbon(aes(ymin = lci_d2, ymax = uci_d2), fill = 'lightgray') +
+  geom_line(aes(y = med_d2)) +
+  labs(x = 'Week', y = 'Change in growth rate (mm/week)',
+       title = 'Bay anchovy, second derivative of yearly trend') +
+  facet_wrap(~yr_fac, scales = 'free_y') +
+  theme_minimal()
