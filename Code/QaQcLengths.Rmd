@@ -10,7 +10,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2); library(mgcv); library(gratia); library(data.table); library(plotly) ;library(dplyr);
 library(tibble); library(readr)
-lengths <- fread('C:/Users/benba/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
+lengths <- fread('C:/Users/ben/Documents/GitHub/pier-seine/Data/derived/lengths2.csv')
 lengths[, yr_fac := as.factor(year)]
 lengths[, record_num := as.factor(record_num)]
 lengths[, wk := week(date)]
@@ -76,14 +76,18 @@ a.ss <- a.ss %>% mutate(YOY =
                                length > 80 ~ "1+")
 )#adding YOY threshold
 
-#h1<-ggplot(data=a.ss, aes(x=wk, y=counts, fill = length, color = length,order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +geom_bar(stat="identity")+ ggtitle("Length by week") #+ facet_grid(YOY ~ .)
+#scale_fill_manual(breaks = c(….))
+#scale_fill_manual(breaks = c(seq(50, 100, 10), 500))… I think
+#Double gradient
+
+#h1<-ggplot(data=a.ss, aes(x=wk, y=counts, fill = length, color = length,order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +geom_bar(stat="identity")+ ggtitle("Length by week") #+ facet_grid(YOY ~ .)
 #ggplotly(h1,tooltip = "text")
 
-h1<-ggplot(data=a.ss  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h1<-ggplot(data=a.ss  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 ggplotly(h1,tooltip = "text")
 
-m1<-ggplot(data=a.ss  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m1<-ggplot(data=a.ss  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m1,tooltip = "text")
@@ -103,12 +107,12 @@ need <- need %>% mutate(YOY =
                                length >= 400 ~ "1+")
 ) #adding YOY threshold
 
-h2<-ggplot(data=need  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h2<-ggplot(data=need  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h2,tooltip = "text")
 
-m2<-ggplot(data=need  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m2<-ggplot(data=need  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m2,tooltip = "text")
@@ -127,12 +131,12 @@ crab <- crab %>% mutate(YOY =
                                length > 128 ~ "1+")
 ) #adding YOY threshold
 
-h3<-ggplot(data=crab  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h3<-ggplot(data=crab  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h3,tooltip = "text")
 
-m3<-ggplot(data=crab  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m3<-ggplot(data=crab  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m3,tooltip = "text")
@@ -148,12 +152,12 @@ spot <- spot %>% mutate(YOY =
                                length >= 170 ~ "1+")
 ) #adding YOY threshold
 
-h4<-ggplot(data=spot  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h4<-ggplot(data=spot  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h4,tooltip = "text")
 
-m4<-ggplot(data=spot  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m4<-ggplot(data=spot  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m4,tooltip = "text")
@@ -170,12 +174,12 @@ inland <- inland %>% mutate(YOY =
                                length >= 60 ~ "1+")
 ) #adding YOY threshold
 
-h5<-ggplot(data=inland  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h5<-ggplot(data=inland  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h5,tooltip = "text")
 
-m5<-ggplot(data=inland  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m5<-ggplot(data=inland  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m5,tooltip = "text")
@@ -192,12 +196,12 @@ bass <- bass %>% mutate(YOY =
                                length >= 270 ~ "1+")
 ) #adding YOY threshold
 
-h6<-ggplot(data=bass  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h6<-ggplot(data=bass  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h6,tooltip = "text")
 
-m6<-ggplot(data=bass  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m6<-ggplot(data=bass  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m6,tooltip = "text")
@@ -214,12 +218,12 @@ blue <- blue %>% mutate(YOY =
                                length >= 140 ~ "1+")
 ) #adding YOY threshold
 
-h7<-ggplot(data=blue  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h7<-ggplot(data=blue  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h7,tooltip = "text")
 
-m7<-ggplot(data=blue  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m7<-ggplot(data=blue  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m7,tooltip = "text")
@@ -235,12 +239,12 @@ ancho <- ancho %>% mutate(YOY =
                                length >= 60 ~ "1+")
 ) #adding YOY threshold
 
-h8<-ggplot(data=ancho  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h8<-ggplot(data=ancho  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h8,tooltip = "text")
 
-m8<-ggplot(data=ancho  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m8<-ggplot(data=ancho  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m8,tooltip = "text")
@@ -258,12 +262,12 @@ men <- men %>% mutate(YOY =
                                length >= 170 ~ "1+")
 ) #adding YOY threshold
 
-h9<-ggplot(data=men  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h9<-ggplot(data=men  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h9,tooltip = "text")
 
-m9<-ggplot(data=men  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m9<-ggplot(data=men  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m9,tooltip = "text")
@@ -280,12 +284,12 @@ shad <- shad %>% mutate(YOY =
                                length >= 180 ~ "1+")
 ) #adding YOY threshold
 
-h10<-ggplot(data=shad  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h10<-ggplot(data=shad  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h10,tooltip = "text")
 
-m10<-ggplot(data=shad  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m10<-ggplot(data=shad  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m10,tooltip = "text")
@@ -301,12 +305,12 @@ perch <- perch %>% mutate(YOY =
                                length >= 93 ~ "1+")
 ) #adding YOY threshold
 
-h11<-ggplot(data=perch  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+h11<-ggplot(data=perch  %>% filter(YOY == "YOY"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("YOY, Length by week") 
 
 ggplotly(h11,tooltip = "text")
 
-m11<-ggplot(data=perch  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length), show.legend=T)) +
+m11<-ggplot(data=perch  %>% filter(YOY == "1+"), aes(x=wk, y=counts, order = reorder(length2, -length), text = paste("Week:", wk,"Length:", length, "Year:", year), show.legend=T)) +
   geom_bar(stat="identity", aes(fill = length, color = length))+ ggtitle("1+, Length by week") 
 
 ggplotly(m11,tooltip = "text")
