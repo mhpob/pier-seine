@@ -1,6 +1,7 @@
 library(data.table); library(qgam); library(gratia); library(ggplot2)
 
 derv_calc <- function(model, data, eps){
+  # Find range of weeks sampled for each year
   wks <- data[, .(mn = min(wk), mx = max(wk)), by = yr_fac]
   
   dervs <- lapply(levels(data$yr_fac), function(yr){
@@ -55,7 +56,12 @@ derv_calc <- function(model, data, eps){
                          uci_d2 = quantile(d2, 0.975, na.rm = T)), by = wk]
     
     # Calculate median and confidence intervals of week of recruitment
-    trans_wk <- samples[samples[, .I[which.max(d2)], by = draw]$V1]
+    
+    ##  Select the first week where the sign of the first derivative flips from 
+    ##  negative to positive (first local minimum)
+    trans_wk <- samples[samples[, .I[c(0, diff(sign(d1))) > 0][1], by = draw]$V1]
+    
+    ## Calculate the CI
     trans_wk <- trans_wk[, quantile(wk, c(0.025, 0.5, 0.975))]
     
     list(wk_ts, trans_wk)
