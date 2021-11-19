@@ -62,7 +62,7 @@ derv_calc <- function(model, data, eps){
     trans_wk <- samples[samples[, .I[c(0, diff(sign(d1))) > 0][1], by = draw]$V1]
     
     ## Calculate the CI
-    trans_wk <- trans_wk[, quantile(wk, c(0.025, 0.5, 0.975))]
+    trans_wk <- trans_wk[, quantile(wk, c(0.025, 0.5, 0.975), na.rm = T)]
     
     list(wk_ts, trans_wk)
   })
