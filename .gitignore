@@ -14,3 +14,6 @@ Thumbs.db
 *.docx
 
 */raw/
+
+# Model output
+fitted models/
